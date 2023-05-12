@@ -8,19 +8,52 @@ import (
 	"context"
 	cryptorand "crypto/rand"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"math/rand"
 	"net/url"
+	"os"
 	"strconv"
 	"strings"
 	"time"
 
+	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
+	"gopkg.in/yaml.v3"
 
 	"github.com/elastic/apm-perf/loadgen"
 )
 
-func Run(ctx context.Context, configs []ScenarioConfig) error {
+type Runner struct {
+	logger       *zap.Logger
+	configs      []ScenarioConfig
+	scenarioName string
+}
+
+// NewRunner returns Runner to executes soak test scenario
+func NewRunner(path string, scenario string, logger *zap.Logger) (*Runner, error) {
+	f, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	var y Scenarios
+	if err := yaml.Unmarshal(f, &y); err != nil {
+		return nil, err
+	}
+	scenarioConfigs := y.Scenarios[scenario]
+	if scenarioConfigs == nil {
+		return nil, errors.New("unknown scenario " + scenario)
+	}
+
+	return &Runner{
+		configs:      scenarioConfigs,
+		logger:       logger.Named("soaktest"),
+		scenarioName: scenario,
+	}, nil
+}
+
+func (r Runner) Run(ctx context.Context) error {
 	g, gCtx := errgroup.WithContext(ctx)
 	// Create a Rand with the same seed for each agent, so we randomise their IDs consistently.
 	var rngseed int64
@@ -29,12 +62,20 @@ func Run(ctx context.Context, configs []ScenarioConfig) error {
 		return fmt.Errorf("failed to generate seed for math/rand: %w", err)
 	}
 
-	for _, config := range configs {
+	r.logger.Info("running scenario `" + r.scenarioName + "`...")
+	for _, config := range r.configs {
 		config := config
-		g.Go(func() error {
-			rng := rand.New(rand.NewSource(rngseed))
-			return runAgent(gCtx, config, rng)
-		})
+		// when not specified, default to 1
+		if config.AgentsReplicas <= 0 {
+			config.AgentsReplicas = 1
+		}
+		for i := 0; i < config.AgentsReplicas; i++ {
+			r.logger.Debug(fmt.Sprintf("agent: %s, replica %d", config.AgentName, i))
+			g.Go(func() error {
+				rng := rand.New(rand.NewSource(rngseed))
+				return runAgent(gCtx, config, rng)
+			})
+		}
 	}
 
 	return g.Wait()
@@ -55,7 +96,8 @@ func runAgent(ctx context.Context, config ScenarioConfig, rng *rand.Rand) error 
 }
 
 func getHandlerParams(config ScenarioConfig) (loadgen.EventHandlerParams, error) {
-	// if AgentName is not specified, using all the agents
+	// if AgentName is not specified, using all the agents,
+	// but shares the allowed events numbers sent for given duration(e.g. 4 agents send 10000/s in total)
 	path := config.AgentName + "*.ndjson"
 	var params loadgen.EventHandlerParams
 	if SoakConfig.BypassProxy {
@@ -64,6 +106,7 @@ func getHandlerParams(config ScenarioConfig) (loadgen.EventHandlerParams, error)
 		}
 		config.Headers["X-Elastic-Project-Id"] = config.ProjectID
 	}
+	config.Headers["X-Elastic-Project-Id"] = config.ProjectID
 	if config.ServerURL == "" {
 		config.ServerURL = SoakConfig.ServerURL
 	}
@@ -85,6 +128,7 @@ func getHandlerParams(config ScenarioConfig) (loadgen.EventHandlerParams, error)
 		Path:                      path,
 		URL:                       serverURL.String(),
 		APIKey:                    config.APIKey,
+		Token:                     SoakConfig.SecretToken,
 		Limiter:                   loadgen.GetNewLimiter(burst, interval),
 		RewriteIDs:                true,
 		RewriteServiceNames:       config.RewriteServiceNames,
