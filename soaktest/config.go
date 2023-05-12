@@ -21,7 +21,7 @@ var SoakConfig struct {
 
 func init() {
 	flag.StringVar(&SoakConfig.Scenario, "scenario", "steady", "Specify which scenario to use")
-	flag.StringVar(&SoakConfig.ScenariosPath, "f", "../scenarios.yml", "Path to scenarios file")
+	flag.StringVar(&SoakConfig.ScenariosPath, "f", "./scenarios.yml", "Path to scenarios file")
 	flag.StringVar(&SoakConfig.ServerURL, "server", "", "Ingest service URL (default http://127.0.0.1:8200), if specify <project_id>, it will be replaced with the project_id provided by the config, (https://<project_id>.apm.elastic.cloud)")
 	flag.Func("api-keys", "API keys by projectID for apm managed service",
 		func(s string) error {
