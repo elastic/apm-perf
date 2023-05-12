@@ -1,0 +1,17 @@
+scenarios:
+  steady:
+      - project_id: project_1
+        event_rate: 2000/1s
+  bursty:
+      - project_id: project_1
+        api_key: ""
+        event_rate: 60000/30s
+  fairness:
+      - project_id: project_1
+        api_key: ""
+        rewrite_transaction_names: true
+        rewrite_span_names: true
+        event_rate: 10000/s
+      - project_id: project_2
+        api_key: ""
+        event_rate: 100/s
