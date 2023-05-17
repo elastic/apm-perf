@@ -15,6 +15,7 @@ var SoakConfig struct {
 	Scenario      string
 	ScenariosPath string
 	ServerURL     string
+	SecretToken   string
 	ApiKeys       map[string]string
 	BypassProxy   bool
 }
@@ -23,6 +24,7 @@ func init() {
 	flag.StringVar(&SoakConfig.Scenario, "scenario", "steady", "Specify which scenario to use")
 	flag.StringVar(&SoakConfig.ScenariosPath, "f", "./scenarios.yml", "Path to scenarios file")
 	flag.StringVar(&SoakConfig.ServerURL, "server", "", "Ingest service URL (default http://127.0.0.1:8200), if specify <project_id>, it will be replaced with the project_id provided by the config, (https://<project_id>.apm.elastic.cloud)")
+	flag.StringVar(&SoakConfig.SecretToken, "secret-token", "", "secret token for APM Server. Managed intake service doesn't support secret token")
 	flag.Func("api-keys", "API keys by projectID for apm managed service",
 		func(s string) error {
 			SoakConfig.ApiKeys = make(map[string]string)
@@ -47,8 +49,9 @@ func setFlagsFromEnv() {
 	// value[0] is environment key
 	// value[1] is default value
 	flagEnvMap := map[string][]string{
-		"server":   {"ELASTIC_APM_SERVER_URL", "http://127.0.0.1:8200"},
-		"api-keys": {"ELASTIC_APM_API_KEYS", ""},
+		"server":       {"ELASTIC_APM_SERVER_URL", "http://127.0.0.1:8200"},
+		"secret-token": {"ELASTIC_APM_SECRET_TOKEN", ""},
+		"api-keys":     {"ELASTIC_APM_API_KEYS", ""},
 	}
 
 	for k, v := range flagEnvMap {

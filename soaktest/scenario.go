@@ -13,6 +13,7 @@ type ScenarioConfig struct {
 	ServerURL                 string            `yaml:"server"`
 	APIKey                    string            `yaml:"api_key"`
 	AgentName                 string            `yaml:"agent_name"`
+	AgentsReplicas            int               `yaml:"agent_replicas"`
 	EventRate                 string            `yaml:"event_rate"`
 	RewriteIDs                bool              `yaml:"rewrite_ids"`
 	RewriteTimestamps         bool              `yaml:"rewrite_timestamps"`
