@@ -100,11 +100,8 @@ func getHandlerParams(config ScenarioConfig) (loadgen.EventHandlerParams, error)
 	// but shares the allowed events numbers sent for given duration(e.g. 4 agents send 10000/s in total)
 	path := config.AgentName + "*.ndjson"
 	var params loadgen.EventHandlerParams
-	if SoakConfig.BypassProxy {
-		if config.Headers == nil {
-			config.Headers = make(map[string]string)
-		}
-		config.Headers["X-Elastic-Project-Id"] = config.ProjectID
+	if config.Headers == nil {
+		config.Headers = make(map[string]string)
 	}
 	config.Headers["X-Elastic-Project-Id"] = config.ProjectID
 	if config.ServerURL == "" {
