@@ -1,0 +1,43 @@
+# Builds and publishes a container image to docker.elastic.co/observability-ci/apm-perf:latest
+# This workflow is triggered on push to main branch when cmd, loadgen, soaktest, Dockerfile or this file are changed
+name: publish-docker-images
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/publish-docker-image.yml"
+      - "cmd/**"
+      - "loadgen/**"
+      - "soaktest/**"
+      - "Dockerfile"
+
+env:
+  REGISTRY: docker.elastic.co
+  PREFIX: observability-ci
+  NAME: apm-perf
+  TAG: latest
+
+permissions:
+  contents: read
+
+jobs:
+  publish-docker-image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: elastic/apm-pipeline-library/.github/actions/docker-login@main
+        with:
+          registry: ${{ env.REGISTRY }}
+          secret: secret/observability-team/ci/docker-registry/prod
+          url: ${{ secrets.VAULT_ADDR }}
+          roleId: ${{ secrets.VAULT_ROLE_ID }}
+          secretId: ${{ secrets.VAULT_SECRET_ID }}
+      - name: Generate Image Name
+        id: generate-image-name
+        run: echo "image_name=${{ env.REGISTRY }}/${{ env.PREFIX }}/${{ env.NAME }}:${{ env.TAG }}" >> $GITHUB_OUTPUT
+      - name: build image
+        run: docker build -t ${{ steps.generate-image-name.outputs.image_name }}
+      - name: push image
+        run: docker push ${{ steps.generate-image-name.outputs.image_name }}
