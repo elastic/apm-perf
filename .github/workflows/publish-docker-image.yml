@@ -6,6 +6,7 @@ on:
   push:
     branches:
       - main
+      - ci_publish_image
     paths:
       - ".github/workflows/publish-docker-image.yml"
       - "cmd/**"
@@ -38,6 +39,6 @@ jobs:
         id: generate-image-name
         run: echo "image_name=${{ env.REGISTRY }}/${{ env.PREFIX }}/${{ env.NAME }}:${{ env.TAG }}" >> $GITHUB_OUTPUT
       - name: build image
-        run: docker build -t ${{ steps.generate-image-name.outputs.image_name }}
+        run: docker build -t ${{ steps.generate-image-name.outputs.image_name }} .
       - name: push image
         run: docker push ${{ steps.generate-image-name.outputs.image_name }}
