@@ -21,11 +21,11 @@ var SoakConfig struct {
 }
 
 func init() {
-	flag.StringVar(&SoakConfig.Scenario, "scenario", "steady", "Specify which scenario to use")
+	flag.StringVar(&SoakConfig.Scenario, "scenario", "steady", "Specify which scenario to use. the value should match one of the scenario key defined in given scenarios YAML file")
 	flag.StringVar(&SoakConfig.ScenariosPath, "f", "./scenarios.yml", "Path to scenarios file")
-	flag.StringVar(&SoakConfig.ServerURL, "server", "", "Ingest service URL (default http://127.0.0.1:8200), if specify <project_id>, it will be replaced with the project_id provided by the config, (https://<project_id>.apm.elastic.cloud)")
-	flag.StringVar(&SoakConfig.SecretToken, "secret-token", "", "secret token for APM Server. Managed intake service doesn't support secret token")
-	flag.Func("api-keys", "API keys by projectID for apm managed service",
+	flag.StringVar(&SoakConfig.ServerURL, "server", "", "Server URL (default http://127.0.0.1:8200), if specified <project_id>, it will be replaced with the project_id provided by the config, (example: https://<project_id>.apm.elastic.cloud)")
+	flag.StringVar(&SoakConfig.SecretToken, "secret-token", "", "Secret token for APM Server. Managed intake service doesn't support secret token")
+	flag.Func("api-keys", "API keys for managed service. Specify key value pairs as `project_id_1:my_api_key,project_id_2:my_key`",
 		func(s string) error {
 			SoakConfig.ApiKeys = make(map[string]string)
 			pairs := strings.Split(s, ",")
