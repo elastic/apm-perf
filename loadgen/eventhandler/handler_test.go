@@ -744,6 +744,27 @@ func TestHandlerSendBatchesRewriteTransactionTypes(t *testing.T) {
 	run(t, true)
 }
 
+func TestHandlerSendBatchesRewriteAndJSONDecode(t *testing.T) {
+	handler, srv := newHandler(t,
+		withStorage(os.DirFS("../events")),
+		withRewriteTransactionTypes(true),
+		withRand(rand.New(rand.NewSource(123456))), // known seed
+	)
+	_, err := handler.SendBatches(context.Background())
+	assert.NoError(t, err)
+
+	d := json.NewDecoder(bytes.NewReader(srv.got.Bytes()))
+	type object map[string]struct{}
+	for {
+		var object object
+		err := d.Decode(&object)
+		if errors.Is(err, io.EOF) {
+			break
+		}
+		require.NoError(t, err)
+	}
+}
+
 func TestHandlerInLoop(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		h, srv := newHandler(t)
