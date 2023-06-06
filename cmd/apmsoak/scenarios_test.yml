@@ -2,7 +2,6 @@ scenarios:
   steady:
     - project_id: a6c7ef211b2d4c43b64a93b8e5b6dee2
       event_rate: 10/1s
-      agent_name: go
   apm-server:
     - event_rate: 10/1s
       agent_name: go
