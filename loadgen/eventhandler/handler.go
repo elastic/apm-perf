@@ -478,8 +478,11 @@ func (h *Handler) writeEvents(w *pooledWriter, b batch, baseTimestamp time.Time,
 
 func rewriteJSONObject(w *pooledWriter, object gjson.Result, f func(key, value gjson.Result) bool) {
 	w.rewriteBuf.RawByte('{')
+	first := true
 	object.ForEach(func(key, value gjson.Result) bool {
-		if key.Index > 1 {
+		if first {
+			first = false
+		} else {
 			w.rewriteBuf.RawByte(',')
 		}
 		w.rewriteBuf.RawString(key.Raw)
