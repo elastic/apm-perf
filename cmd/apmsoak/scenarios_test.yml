@@ -1,6 +1,6 @@
 scenarios:
   steady:
-    - project_id: a6c7ef211b2d4c43b64a93b8e5b6dee2
+    - project_id: f0d3b9322a51464aa782f46eef0bb157
       event_rate: 10/1s
   apm-server:
     - event_rate: 10/1s
