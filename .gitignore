@@ -1,2 +1,3 @@
-cmd/apmsoak/apmsoak
 .vscode
+.states
+dist/

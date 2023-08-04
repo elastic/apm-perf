@@ -24,7 +24,7 @@ Usage of /var/folders/y8/c7ft78m54v78z8yy16bznmkw0000gn/T/go-build1835306963/b00
 All the flags are optional, but it's expected to provide a scenario flag to start a specific scenario from [pre-defined scenarios file](https://github.com/elastic/apm-perf/blob/main/cmd/apmsoak/scenarios.yml#L2), it is `steady` by default.
 ```sh
 # start soaktest that generates 2000 events per second
-./apmsoak -scenario=steady
+./apmsoak run -scenario=steady
 ```
 
 The configs in `scenarios.yml` file inherits [loadgen](./loadgen/config/config.go) configs, with extra fields such as project_id and api_key that can be used for the managed APM service.
@@ -32,5 +32,5 @@ The configs in `scenarios.yml` file inherits [loadgen](./loadgen/config/config.g
 Note that the managed service will use API key based auth and one soaktest can target multiple projects, so we provide key-value pairs(projectID and api key respectively). the api key can also be provided as an [ENV variable](https://github.com/elastic/apm-perf/blob/main/soaktest/config.go#L54).
 
 ```sh
-./apmsoak -scenario=fairness -api-keys="project_1:key-to-project_1,project_2:key-to-project_2"
+./apmsoak run -scenario=fairness -api-keys="project_1:key-to-project_1,project_2:key-to-project_2"
 ```

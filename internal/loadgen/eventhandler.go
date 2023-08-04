@@ -11,7 +11,7 @@ import (
 
 	"golang.org/x/time/rate"
 
-	"github.com/elastic/apm-perf/loadgen/eventhandler"
+	"github.com/elastic/apm-perf/internal/loadgen/eventhandler"
 
 	"go.elastic.co/apm/v2/transport"
 )
