@@ -7,34 +7,49 @@ package main
 import (
 	"context"
 	"errors"
-	"flag"
+	"fmt"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
-	"go.elastic.co/ecszap"
-	"go.uber.org/zap"
-
-	"github.com/elastic/apm-perf/soaktest"
+	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
 
-func main() {
-	encoderConfig := ecszap.NewDefaultEncoderConfig()
-	core := ecszap.NewCore(encoderConfig, os.Stdout, zap.InfoLevel)
-	logger := zap.New(core, zap.AddCaller())
+const envVarPrefix = "ELASTIC_APM_"
 
-	flag.Parse()
+func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 
-	runner, err := soaktest.NewRunner(soaktest.SoakConfig.ScenariosPath, soaktest.SoakConfig.Scenario, logger)
-	if err != nil {
-		logger.Fatal("Fail to initialize runner", zap.Error(err))
+	// Register root command in cobra
+	var rootCmd = &cobra.Command{
+		Use:              "apmsoak",
+		TraverseChildren: true,
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			var err error
+			cmd.Flags().VisitAll(func(flag *pflag.Flag) {
+				optionName := strings.ToUpper(flag.Name)
+				optionName = strings.ReplaceAll(optionName, "-", "_")
+				envVar := envVarPrefix + optionName
+				if val, ok := os.LookupEnv(envVar); !flag.Changed && ok {
+					flagErr := flag.Value.Set(val)
+					if flagErr != nil {
+						err = fmt.Errorf("invalid environment variable %s: %w", envVar, flagErr)
+					}
+				}
+			})
+			return err
+		},
 	}
+	rootCmd.AddCommand(NewCmdVersion())
+	rootCmd.AddCommand(NewCmdRun())
 
-	if err := runner.Run(ctx); err != nil {
+	// Execute commands
+	if err := rootCmd.ExecuteContext(ctx); err != nil {
 		if !errors.Is(err, context.Canceled) {
-			logger.Fatal("runner exited with error", zap.Error(err))
+			fmt.Println(err)
 		}
 	}
 }
