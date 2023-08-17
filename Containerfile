@@ -37,6 +37,18 @@ LABEL \
 # Switch workdir
 WORKDIR /opt/apm-perf
 
+# Add minimal stuff
+RUN \
+  apt-get update > /dev/null \
+  && apt-get upgrade -y \
+  && apt-get install -y --no-install-recommends \
+    "apt-utils=*" \
+    "ca-certificates=*" \
+    "curl=*" \
+    "gnupg=*" \
+  && apt-get clean \
+  && rm -rf /var/lib/apt/lists/*
+
 # Copy files
 COPY --from=builder /opt/apm-perf/dist/apmsoak /usr/bin/apmsoak
 COPY ./internal/loadgen/events ./events
