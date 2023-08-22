@@ -5,6 +5,7 @@
 package loadgen
 
 import (
+	"crypto/tls"
 	"embed"
 	"math/rand"
 	"path/filepath"
@@ -26,6 +27,7 @@ type EventHandlerParams struct {
 	URL                       string
 	Token                     string
 	APIKey                    string
+	Secure                    bool
 	Limiter                   *rate.Limiter
 	Rand                      *rand.Rand
 	RewriteIDs                bool
@@ -44,7 +46,13 @@ type EventHandlerParams struct {
 func NewEventHandler(p EventHandlerParams) (*eventhandler.Handler, error) {
 	// We call the HTTPTransport constructor to avoid copying all the config
 	// parsing that creates the `*http.Client`.
-	t, err := transport.NewHTTPTransport(transport.HTTPTransportOptions{})
+	var tlsClientCfg *tls.Config
+	if !p.Secure {
+		tlsClientCfg = &tls.Config{InsecureSkipVerify: true}
+	}
+	t, err := transport.NewHTTPTransport(transport.HTTPTransportOptions{
+		TLSClientConfig: tlsClientCfg,
+	})
 	if err != nil {
 		return nil, err
 	}
