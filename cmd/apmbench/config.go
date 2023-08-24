@@ -1,0 +1,61 @@
+// Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+// or more contributor license agreements. Licensed under the Elastic License 2.0;
+// you may not use this file except in compliance with the Elastic License 2.0.
+
+package main
+
+import (
+	"flag"
+	"fmt"
+	"regexp"
+	"sort"
+	"strconv"
+	"strings"
+	"time"
+)
+
+var cfg struct {
+	Count     uint
+	Benchtime time.Duration
+	Detailed  bool
+	RunRE     *regexp.Regexp
+	// Sorted list of agents count to be used for benchmarking
+	AgentsList []int
+}
+
+func init() {
+	cfg.AgentsList = []int{1}
+
+	flag.UintVar(&cfg.Count, "count", 1, "run benchmarks `n` times")
+	flag.DurationVar(&cfg.Benchtime, "benchtime", time.Second, "run each benchmark for duration `d`")
+	flag.BoolVar(&cfg.Detailed, "detailed", false, "Get detailed metrics recorded during benchmark")
+	flag.Func("run", "run only benchmarks matching `regexp`", func(restr string) error {
+		if restr != "" {
+			re, err := regexp.Compile(restr)
+			if err != nil {
+				return err
+			}
+			cfg.RunRE = re
+		}
+		return nil
+	})
+	flag.Func("agents", "comma-separated `list` of agent counts to run each benchmark with",
+		func(agents string) error {
+			var agentsList []int
+			for _, val := range strings.Split(agents, ",") {
+				val = strings.TrimSpace(val)
+				if val == "" {
+					continue
+				}
+				n, err := strconv.Atoi(val)
+				if err != nil || n <= 0 {
+					return fmt.Errorf("invalid value %q for -agents", val)
+				}
+				agentsList = append(agentsList, n)
+			}
+			sort.Ints(agentsList)
+			cfg.AgentsList = agentsList
+			return nil
+		},
+	)
+}
