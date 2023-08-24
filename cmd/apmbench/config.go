@@ -20,7 +20,8 @@ var cfg struct {
 	Detailed  bool
 	RunRE     *regexp.Regexp
 	// Sorted list of agents count to be used for benchmarking
-	AgentsList []int
+	AgentsList          []int
+	CollectorConfigYaml string
 }
 
 func init() {
@@ -58,4 +59,5 @@ func init() {
 			return nil
 		},
 	)
+	flag.StringVar(&cfg.CollectorConfigYaml, "collector-config-yaml", "", "configuration for otel collector")
 }

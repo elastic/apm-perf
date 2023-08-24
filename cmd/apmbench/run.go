@@ -31,7 +31,7 @@ type result struct {
 }
 
 // Run runs all the given BenchmarkFunc.
-func Run(fns ...BenchmarkFunc) error {
+func Run(extraMetrics func(*testing.B) error, fns ...BenchmarkFunc) error {
 	type benchmark struct {
 		name string
 		fn   BenchmarkFunc
@@ -70,7 +70,7 @@ func Run(fns ...BenchmarkFunc) error {
 		runtime.GOMAXPROCS(agents)
 		for _, b := range benchmarks {
 			name := fullBenchmarkName(b.name, agents)
-			result := runOne(b.fn)
+			result := runOne(extraMetrics, b.fn)
 			// testing.Benchmark discards all output so the only thing we can
 			// retrive is the benchmark status and result.
 			if result.skipped {
@@ -87,7 +87,7 @@ func Run(fns ...BenchmarkFunc) error {
 	return nil
 }
 
-func runOne(fn BenchmarkFunc) (result result) {
+func runOne(extraMetrics func(*testing.B) error, fn BenchmarkFunc) (result result) {
 	limiter := loadgen.GetNewLimiter(
 		loadgencfg.Config.EventRate.Burst,
 		loadgencfg.Config.EventRate.Interval,
@@ -106,6 +106,7 @@ func runOne(fn BenchmarkFunc) (result result) {
 
 		result.skipped = b.Skipped()
 		result.failed = b.Failed()
+		extraMetrics(b)
 	})
 	return result
 }
