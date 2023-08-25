@@ -6,18 +6,17 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"testing"
 )
 
-// init the testing flags
-var _ = func() bool {
-	testing.Init()
-	return true
-}()
-
 func main() {
 	flag.Parse()
+
+	flag.VisitAll(func(f *flag.Flag) {
+		fmt.Printf("%s: %s\n", f.Name, f.Value)
+	})
 
 	if err := Run(
 		Benchmark1000Transactions,
@@ -31,4 +30,8 @@ func main() {
 	); err != nil {
 		log.Fatal(err)
 	}
+}
+
+func init() {
+	testing.Init()
 }

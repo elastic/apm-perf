@@ -9,7 +9,6 @@ require (
 	github.com/stretchr/testify v1.8.4
 	github.com/tidwall/gjson v1.14.4
 	github.com/tidwall/sjson v1.2.5
-	go.elastic.co/apm v1.15.0
 	go.elastic.co/apm/v2 v2.4.1
 	go.elastic.co/ecszap v1.0.1
 	go.elastic.co/fastjson v1.1.0
@@ -43,7 +42,6 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/procfs v0.10.1 // indirect
 	github.com/rogpeppe/go-internal v1.10.0 // indirect
-	github.com/santhosh-tekuri/jsonschema v1.2.4 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.0 // indirect
 	go.opentelemetry.io/otel v1.16.0 // indirect
