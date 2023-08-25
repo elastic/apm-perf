@@ -6,17 +6,12 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"log"
 	"testing"
 )
 
 func main() {
 	flag.Parse()
-
-	flag.VisitAll(func(f *flag.Flag) {
-		fmt.Printf("%s: %s\n", f.Name, f.Value)
-	})
 
 	if err := Run(
 		Benchmark1000Transactions,
