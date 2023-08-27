@@ -71,9 +71,7 @@ func main() {
 			}
 			return nil
 		}
-		resetFunc = func() {
-			collector.Reset()
-		}
+		resetFunc = collector.Reset
 
 		// Wait for otel collector to be ready
 		ctx, cancel = context.WithTimeout(context.Background(), 5*time.Second)
