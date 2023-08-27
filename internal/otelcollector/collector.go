@@ -116,6 +116,11 @@ func (c *Collector) GetAggregatedMetric(
 	return c.store.Get(cfg)
 }
 
+// Reset resets the collector.
+func (c *Collector) Reset() {
+	c.store.Reset()
+}
+
 type staticConfigProvider struct {
 	otlpReceiverConfig *otlpreceiver.Config
 }

@@ -145,6 +145,7 @@ func (s *Store) Add(ld pmetric.Metrics) {
 	}
 }
 
+// Get returns the aggregated value of a configured aggregation config.
 func (s *Store) Get(cfg AggregationConfig) (float64, error) {
 	var w fastjson.Writer
 	key := getHashKey(cfg, &w)
@@ -157,6 +158,16 @@ func (s *Store) Get(cfg AggregationConfig) (float64, error) {
 		return 0, nil
 	}
 	return dp.DoubleValue(), nil
+}
+
+// Reset resets the store by deleting all cached data.
+func (s *Store) Reset() {
+	s.Lock()
+	defer s.Unlock()
+
+	for k := range s.nums {
+		delete(s.nums, k)
+	}
 }
 
 func (s *Store) add(m pmetric.Metric) {

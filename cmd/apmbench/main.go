@@ -26,6 +26,7 @@ func main() {
 	}
 
 	extraMetrics := func(*testing.B) error { return nil }
+	resetFunc := func() { return }
 	if cfg.CollectorConfigYaml != "" {
 		logger.Info("starting otel collector...")
 
@@ -70,6 +71,9 @@ func main() {
 			}
 			return nil
 		}
+		resetFunc = func() {
+			collector.Reset()
+		}
 
 		// Wait for otel collector to be ready
 		ctx, cancel = context.WithTimeout(context.Background(), 5*time.Second)
@@ -81,6 +85,7 @@ func main() {
 
 	if err := Run(
 		extraMetrics,
+		resetFunc,
 		Benchmark1000Transactions,
 		BenchmarkOTLPTraces,
 		BenchmarkAgentAll,
