@@ -49,9 +49,13 @@ RUN \
   && apt-get clean \
   && rm -rf /var/lib/apt/lists/*
 
-# Copy files
+# Copy files for apmsoak
 COPY --from=builder /opt/apm-perf/dist/apmsoak /usr/bin/apmsoak
 COPY ./internal/loadgen/events ./events
 COPY ./cmd/apmsoak/scenarios.yml /opt/apm-perf/scenarios.yml
 
+# Copy files for apmbench
+COPY --from=builder /opt/apm-perf/dist/apmbench /usr/bin/apmbench
+
+# Default to apmsoak, override to use apmbench
 CMD [ "/usr/bin/apmsoak" ]
