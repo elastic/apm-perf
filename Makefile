@@ -13,7 +13,9 @@ fmt: tools/go.mod
 
 lint: tools/go.mod
 	go run -modfile=tools/go.mod honnef.co/go/tools/cmd/staticcheck -checks=all ./...
-	#go list -m -json $(MODULE_DEPS) | go run -modfile=tools/go.mod go.elastic.co/go-licence-detector \
+	# See https://github.com/elastic/go-licence-detector/issues/22
+	# TODO: Enable after the licence-detector issue is fixed
+	# go list -m -json $(MODULE_DEPS) | go run -modfile=tools/go.mod go.elastic.co/go-licence-detector \
 		-includeIndirect -rules tools/notice/rules.json -validate
 	go mod tidy && git diff --exit-code
 
