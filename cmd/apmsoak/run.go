@@ -22,13 +22,13 @@ type RunOptions struct {
 	ScenariosPath string
 	ServerURL     string
 	SecretToken   string
-	ApiKeys       string
+	APIKeys       string
 	BypassProxy   bool
 }
 
 func (opts *RunOptions) toRunnerConfig() (*soaktest.RunnerConfig, error) {
 	apiKeys := make(map[string]string)
-	pairs := strings.Split(opts.ApiKeys, ",")
+	pairs := strings.Split(opts.APIKeys, ",")
 	for _, pair := range pairs {
 		kv := strings.Split(pair, ":")
 		if len(kv) != 2 {
@@ -41,7 +41,7 @@ func (opts *RunOptions) toRunnerConfig() (*soaktest.RunnerConfig, error) {
 		ScenariosPath: opts.ScenariosPath,
 		ServerURL:     opts.ServerURL,
 		SecretToken:   opts.SecretToken,
-		ApiKeys:       apiKeys,
+		APIKeys:       apiKeys,
 		BypassProxy:   opts.BypassProxy,
 	}, nil
 }
@@ -78,7 +78,7 @@ func NewCmdRun() *cobra.Command {
 	cmd.Flags().StringVar(&options.Scenario, "scenario", "steady", "Specify which scenario to use. the value should match one of the scenario key defined in given scenarios YAML file")
 	cmd.Flags().StringVarP(&options.ScenariosPath, "file", "f", "./scenarios.yml", "Path to scenarios file")
 	cmd.Flags().StringVar(&options.SecretToken, "secret-token", "", "Secret token for APM Server. Managed intake service doesn't support secret token")
-	cmd.Flags().StringVar(&options.ApiKeys, "api-keys", "", "API keys for managed service. Specify key value pairs as `project_id_1:my_api_key,project_id_2:my_key`")
+	cmd.Flags().StringVar(&options.APIKeys, "api-keys", "", "API keys for managed service. Specify key value pairs as `project_id_1:my_api_key,project_id_2:my_key`")
 	cmd.Flags().BoolVar(&options.BypassProxy, "bypass-proxy", false, "Detach from proxy dependency and provide projectID via header. Useful when testing locally")
 	return cmd
 }

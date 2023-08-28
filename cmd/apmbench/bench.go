@@ -12,15 +12,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/elastic/apm-perf/internal/loadgen"
-	loadgencfg "github.com/elastic/apm-perf/internal/loadgen/config"
-	"github.com/elastic/apm-perf/internal/loadgen/eventhandler"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"golang.org/x/time/rate"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+
+	"github.com/elastic/apm-perf/internal/loadgen"
+	loadgencfg "github.com/elastic/apm-perf/internal/loadgen/config"
+	"github.com/elastic/apm-perf/internal/loadgen/eventhandler"
 
 	"go.elastic.co/apm/v2"
 	"go.elastic.co/apm/v2/transport"
@@ -109,9 +110,9 @@ func Benchmark10000AggregationGroups(b *testing.B, l *rate.Limiter) {
 			}
 			tx := tracer.StartTransaction(fmt.Sprintf("name%d", i), fmt.Sprintf("type%d", i))
 			span := tx.StartSpanOptions(fmt.Sprintf("name%d", i), fmt.Sprintf("type%d", i), apm.SpanOptions{})
-			span.Context.SetDestinationService(apm.DestinationServiceSpanContext{
-				Name:     fmt.Sprintf("name%d", i),
-				Resource: fmt.Sprintf("resource%d", i),
+			span.Context.SetServiceTarget(apm.ServiceTargetSpanContext{
+				Name: fmt.Sprintf("name%d", i),
+				Type: fmt.Sprintf("resource%d", i),
 			})
 			span.Duration = time.Second
 			span.End()
