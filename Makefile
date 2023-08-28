@@ -15,9 +15,7 @@ lint: tools/go.mod
 	go run -modfile=tools/go.mod honnef.co/go/tools/cmd/staticcheck -checks=all ./...
 	go list -m -json $(MODULE_DEPS) | go run -modfile=tools/go.mod go.elastic.co/go-licence-detector \
 		-includeIndirect \
-		-rules tools/notice/rules.json \
-		-noticeTemplate tools/notice/NOTICE.txt.tmpl \
-		-noticeOut NOTICE.txt
+		-rules tools/notice/rules.json
 	go mod tidy && git diff --exit-code
 
 .PHONY: clean
