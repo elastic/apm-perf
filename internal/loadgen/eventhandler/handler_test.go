@@ -193,7 +193,7 @@ func TestHandlerNew(t *testing.T) {
 		assert.Nil(t, h)
 	})
 	t.Run("failure-rum-data", func(t *testing.T) {
-		storage := os.DirFS(filepath.Join("..", "..", "..", "testdata", "intake-v3"))
+		storage := os.DirFS(filepath.Join("testdata", "intake-v3"))
 		h, err := New(Config{
 			Path:      `*.ndjson`,
 			Transport: &Transport{},
