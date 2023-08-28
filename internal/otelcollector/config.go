@@ -8,9 +8,10 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/elastic/apm-perf/internal/otelcollector/exporter/inmemexporter"
 	"go.uber.org/zap/zapcore"
 	"gopkg.in/yaml.v3"
+
+	"github.com/elastic/apm-perf/internal/otelcollector/exporter/inmemexporter"
 )
 
 // CollectorConfig defines the configuration to customize the collector.

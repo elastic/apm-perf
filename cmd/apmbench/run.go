@@ -13,10 +13,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/elastic/apm-perf/internal/loadgen"
-	loadgencfg "github.com/elastic/apm-perf/internal/loadgen/config"
 	"go.elastic.co/apm/v2/stacktrace"
 	"golang.org/x/time/rate"
+
+	"github.com/elastic/apm-perf/internal/loadgen"
+	loadgencfg "github.com/elastic/apm-perf/internal/loadgen/config"
 )
 
 const benchmarkFuncPrefix = "Benchmark"

@@ -10,9 +10,10 @@ import (
 	"path"
 	"testing"
 
-	"github.com/elastic/apm-perf/internal/otelcollector/exporter/inmemexporter"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/elastic/apm-perf/internal/otelcollector/exporter/inmemexporter"
 )
 
 func TestLoadConfigFromYamlFile(t *testing.T) {

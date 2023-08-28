@@ -2,6 +2,8 @@
 // or more contributor license agreements. Licensed under the Elastic License 2.0;
 // you may not use this file except in compliance with the Elastic License 2.0.
 
+// Package soaktest contains code for defining soak testing scenarios and providing
+// an interface for running them.
 package soaktest
 
 import (
@@ -29,7 +31,7 @@ type RunnerConfig struct {
 	ScenariosPath string
 	ServerURL     string
 	SecretToken   string
-	ApiKeys       map[string]string
+	APIKeys       map[string]string
 	BypassProxy   bool
 }
 
@@ -124,7 +126,7 @@ func getHandlerParams(runnerConfig *RunnerConfig, config ScenarioConfig) (loadge
 		return params, err
 	}
 	if config.APIKey == "" {
-		config.APIKey = runnerConfig.ApiKeys[config.ProjectID]
+		config.APIKey = runnerConfig.APIKeys[config.ProjectID]
 	}
 
 	burst, interval, err := getEventRate(config.EventRate)

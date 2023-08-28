@@ -13,8 +13,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/elastic/apm-perf/internal/otelcollector"
 	"go.uber.org/zap"
+
+	"github.com/elastic/apm-perf/internal/otelcollector"
 )
 
 func main() {
@@ -26,7 +27,7 @@ func main() {
 	}
 
 	extraMetrics := func(*testing.B) error { return nil }
-	resetFunc := func() { return }
+	resetFunc := func() {}
 	if cfg.CollectorConfigYaml != "" {
 		logger.Info("starting otel collector...")
 

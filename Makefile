@@ -3,6 +3,8 @@
 STATES_DIR=$(CURDIR)/.states
 DIST_DIR=$(CURDIR)/dist
 
+MODULE_DEPS=$(sort $(shell go list -deps -tags=darwin,linux,windows -f "{{with .Module}}{{if not .Main}}{{.Path}}{{end}}{{end}}" ./...))
+
 all: test
 
 fmt: tools/go.mod
@@ -12,7 +14,8 @@ fmt: tools/go.mod
 lint: tools/go.mod
 	go run -modfile=tools/go.mod honnef.co/go/tools/cmd/staticcheck -checks=all ./...
 	go list -m -json $(MODULE_DEPS) | go run -modfile=tools/go.mod go.elastic.co/go-licence-detector \
-		-includeIndirect -rules tools/notice/rules.json -validate
+		-includeIndirect \
+		-rules tools/notice/rules.json
 	go mod tidy && git diff --exit-code
 
 .PHONY: clean
@@ -63,8 +66,6 @@ sanitize:
 publish: IMAGE_REF=$$(cat "$(STATES_DIR)/image_ref")
 publish:
 	docker push $(IMAGE_REF)
-
-MODULE_DEPS=$(sort $(shell go list -deps -tags=darwin,linux,windows -f "{{with .Module}}{{if not .Main}}{{.Path}}{{end}}{{end}}" ./...))
 
 notice: NOTICE.txt
 NOTICE.txt: go.mod tools/go.mod

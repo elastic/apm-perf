@@ -2,6 +2,9 @@
 // or more contributor license agreements. Licensed under the Elastic License 2.0;
 // you may not use this file except in compliance with the Elastic License 2.0.
 
+// Package otelcollector contains code for OTEL based in-memory telemetry
+// collector responsible for exposing OTEL receiver endpoints, caching telemetry
+// data sentand providing queryable interface for the collected data.
 package otelcollector
 
 import (
@@ -10,7 +13,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/elastic/apm-perf/internal/otelcollector/exporter/inmemexporter"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/config/configtelemetry"
 	"go.opentelemetry.io/collector/exporter"
@@ -22,6 +24,8 @@ import (
 	"go.opentelemetry.io/collector/service/telemetry"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+
+	"github.com/elastic/apm-perf/internal/otelcollector/exporter/inmemexporter"
 )
 
 // Collector defines an OTEL collector for collecting metrics. Services
@@ -108,7 +112,7 @@ func (c *Collector) Shutdown() error {
 	return nil
 }
 
-// GetAggregatedMetrics returns a aggregated value for the given
+// GetAggregatedMetric returns a aggregated value for the given
 // aggregation config.
 func (c *Collector) GetAggregatedMetric(
 	cfg inmemexporter.AggregationConfig,
