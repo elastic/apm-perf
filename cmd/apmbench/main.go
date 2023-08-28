@@ -49,13 +49,13 @@ func main() {
 		defer cancel()
 
 		wg.Add(1)
-		go func() {
+		go func(ctx context.Context) {
 			defer wg.Done()
 
 			if err := collector.Run(ctx); err != nil {
 				logger.Fatal("failed to run collector", zap.Error(err))
 			}
-		}()
+		}(ctx)
 
 		extraMetrics = func(b *testing.B) error {
 			var errs []error
