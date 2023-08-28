@@ -14,6 +14,7 @@ require (
 	go.elastic.co/fastjson v1.1.0
 	go.opentelemetry.io/collector v0.83.0
 	go.opentelemetry.io/collector/component v0.83.0
+	go.opentelemetry.io/collector/config/configtelemetry v0.83.0
 	go.opentelemetry.io/collector/consumer v0.83.0
 	go.opentelemetry.io/collector/exporter v0.83.0
 	go.opentelemetry.io/collector/pdata v1.0.0-rcv0014
@@ -26,7 +27,6 @@ require (
 	golang.org/x/sync v0.2.0
 	golang.org/x/time v0.3.0
 	google.golang.org/grpc v1.57.0
-	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -91,7 +91,6 @@ require (
 	go.opentelemetry.io/collector/config/confighttp v0.83.0 // indirect
 	go.opentelemetry.io/collector/config/confignet v0.83.0 // indirect
 	go.opentelemetry.io/collector/config/configopaque v0.83.0 // indirect
-	go.opentelemetry.io/collector/config/configtelemetry v0.83.0 // indirect
 	go.opentelemetry.io/collector/config/configtls v0.83.0 // indirect
 	go.opentelemetry.io/collector/config/internal v0.83.0 // indirect
 	go.opentelemetry.io/collector/confmap v0.83.0 // indirect
@@ -128,5 +127,6 @@ require (
 	google.golang.org/genproto/googleapis/api v0.0.0-20230525234035-dd9d682886f9 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20230530153820-e85fd2cbaebc // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
+	gopkg.in/yaml.v2 v2.4.0 // indirect
 	howett.net/plist v1.0.0 // indirect
 )
