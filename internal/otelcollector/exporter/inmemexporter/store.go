@@ -99,15 +99,21 @@ func (cfg *AggregationConfig) isEqualIgnoringType(target AggregationConfig) bool
 	return true
 }
 
-func (cfg *AggregationConfig) isEqual(name string, attrs pcommon.Map) bool {
+func (cfg *AggregationConfig) isEqual(
+	name string,
+	attrs, resAttrs pcommon.Map,
+) bool {
 	if cfg.Name != name {
 		return false
 	}
-	if len(cfg.MatchLabelValues) > attrs.Len() {
+	if len(cfg.MatchLabelValues) > (attrs.Len() + resAttrs.Len()) {
 		return false
 	}
 	for k, v := range cfg.MatchLabelValues {
 		targetV, ok := attrs.Get(k)
+		if !ok {
+			targetV, ok = resAttrs.Get(k)
+		}
 		if !ok || v != targetV.AsString() {
 			return false
 		}
@@ -135,11 +141,13 @@ func (s *Store) Add(ld pmetric.Metrics) {
 
 	rms := ld.ResourceMetrics()
 	for i := 0; i < rms.Len(); i++ {
-		sms := rms.At(i).ScopeMetrics()
+		rm := rms.At(i)
+		resAttrs := rm.Resource().Attributes()
+		sms := rm.ScopeMetrics()
 		for j := 0; j < sms.Len(); j++ {
 			ms := sms.At(j).Metrics()
 			for k := 0; k < ms.Len(); k++ {
-				s.add(ms.At(k))
+				s.add(ms.At(k), resAttrs)
 			}
 		}
 	}
@@ -170,7 +178,7 @@ func (s *Store) Reset() {
 	}
 }
 
-func (s *Store) add(m pmetric.Metric) {
+func (s *Store) add(m pmetric.Metric, resAttrs pcommon.Map) {
 	// Fast fail if metric name is not filtered
 	_, ok := s.aggCfgM[m.Name()]
 	if !ok {
@@ -184,7 +192,7 @@ func (s *Store) add(m pmetric.Metric) {
 
 	switch m.Type() {
 	case pmetric.MetricTypeGauge:
-		s.mergeNumberDataPoints(m.Name(), m.Gauge().DataPoints())
+		s.mergeNumberDataPoints(m.Name(), m.Gauge().DataPoints(), resAttrs)
 	case pmetric.MetricTypeSum:
 		if m.Sum().AggregationTemporality() == pmetric.AggregationTemporalityCumulative {
 			s.logger.Warn(
@@ -195,7 +203,7 @@ func (s *Store) add(m pmetric.Metric) {
 			return
 		}
 		// TODO (lahsivjar): need to handle start time?
-		s.mergeNumberDataPoints(m.Name(), m.Sum().DataPoints())
+		s.mergeNumberDataPoints(m.Name(), m.Sum().DataPoints(), resAttrs)
 	default:
 		s.logger.Warn(
 			"metric type not implemented",
@@ -207,6 +215,7 @@ func (s *Store) add(m pmetric.Metric) {
 func (s *Store) mergeNumberDataPoints(
 	name string,
 	from pmetric.NumberDataPointSlice,
+	resAttrs pcommon.Map,
 ) {
 	if s.nums == nil {
 		s.nums = make(map[string]pmetric.NumberDataPoint)
@@ -215,7 +224,7 @@ func (s *Store) mergeNumberDataPoints(
 	var w fastjson.Writer
 	for i := 0; i < from.Len(); i++ {
 		dp := from.At(i)
-		for _, cfg := range s.filterCfgs(name, dp.Attributes()) {
+		for _, cfg := range s.filterCfgs(name, dp.Attributes(), resAttrs) {
 			key := getHashKey(cfg, &w)
 			if _, ok := s.nums[key]; !ok {
 				s.nums[key] = pmetric.NewNumberDataPoint()
@@ -231,14 +240,17 @@ func (s *Store) mergeNumberDataPoints(
 	}
 }
 
-func (s *Store) filterCfgs(name string, attrs pcommon.Map) []AggregationConfig {
+func (s *Store) filterCfgs(
+	name string,
+	attrs, resAttrs pcommon.Map,
+) []AggregationConfig {
 	cfgs, ok := s.aggCfgM[name]
 	if !ok {
 		return nil
 	}
 	var result []AggregationConfig
 	for _, cfg := range cfgs {
-		if cfg.isEqual(name, attrs) {
+		if cfg.isEqual(name, attrs, resAttrs) {
 			result = append(result, cfg)
 		}
 	}
