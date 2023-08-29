@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"sort"
 	"sync"
+	"time"
 
 	"go.elastic.co/fastjson"
 	"go.opentelemetry.io/collector/pdata/pcommon"
@@ -23,6 +24,7 @@ type AggregationType string
 const (
 	Last AggregationType = "last"
 	Sum  AggregationType = "sum"
+	Rate AggregationType = "rate"
 )
 
 // Store is a in-memory data store for telemetry data. Data
@@ -165,7 +167,16 @@ func (s *Store) Get(cfg AggregationConfig) (float64, error) {
 	if !ok {
 		return 0, nil
 	}
-	return dp.DoubleValue(), nil
+	switch cfg.Type {
+	case Rate:
+		duration := time.Duration(dp.Timestamp() - dp.StartTimestamp()).Seconds()
+		if duration <= 0 {
+			return 0, nil
+		}
+		return dp.DoubleValue() / duration, nil
+	default:
+		return dp.DoubleValue(), nil
+	}
 }
 
 // Reset resets the store by deleting all cached data.
@@ -196,13 +207,12 @@ func (s *Store) add(m pmetric.Metric, resAttrs pcommon.Map) {
 	case pmetric.MetricTypeSum:
 		if m.Sum().AggregationTemporality() == pmetric.AggregationTemporalityCumulative {
 			s.logger.Warn(
-				"skipping metric, cumulative temporality not implemented",
+				"unexpected, all cumulative temporality should be converted to delta",
 				zap.String("name", m.Name()),
 				zap.String("type", m.Type().String()),
 			)
 			return
 		}
-		// TODO (lahsivjar): need to handle start time?
 		s.mergeNumberDataPoints(m.Name(), m.Sum().DataPoints(), resAttrs)
 	default:
 		s.logger.Warn(
@@ -235,6 +245,23 @@ func (s *Store) mergeNumberDataPoints(
 				to.SetDoubleValue(doubleValue(dp))
 			case Sum:
 				to.SetDoubleValue(to.DoubleValue() + doubleValue(dp))
+			case Rate:
+				to.SetDoubleValue(to.DoubleValue() + doubleValue(dp))
+				// We will use to#StartTimestamp and to#Timestamp fields to
+				// cache the lowest and the highest timestamps. This will be
+				// used at query time to calculate rate.
+				if to.StartTimestamp() == 0 {
+					// If the data point has a start timestamp then use that
+					// as the start timestamp, else use the end timestamp.
+					if dp.StartTimestamp() != 0 {
+						to.SetStartTimestamp(dp.StartTimestamp())
+					} else {
+						to.SetStartTimestamp(dp.Timestamp())
+					}
+				}
+				if to.Timestamp() < dp.Timestamp() {
+					to.SetTimestamp(dp.Timestamp())
+				}
 			}
 		}
 	}
