@@ -86,7 +86,7 @@ func Run(
 				fmt.Printf("--- FAIL: %s\n", name)
 				return fmt.Errorf("benchmark %q failed", name)
 			}
-			fmt.Printf("%-*s\t%s\t%s\n", maxLen, name, result.benchResult, result.benchResult.MemString())
+			fmt.Printf("%-*s\t%s\n", maxLen, name, result.benchResult)
 		}
 	}
 	return nil
