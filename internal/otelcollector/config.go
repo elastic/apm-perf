@@ -16,9 +16,11 @@ import (
 
 // CollectorConfig defines the configuration to customize the collector.
 type CollectorConfig struct {
-	HTTPEndpoint        string                            `yaml:"http_endpoint"`
-	GRPCEndpoint        string                            `yaml:"grpc_endpoint"`
-	InMemoryStoreConfig []inmemexporter.AggregationConfig `yaml:"store"`
+	HTTPEndpoint         string                            `yaml:"http_endpoint"`
+	GRPCEndpoint         string                            `yaml:"grpc_endpoint"`
+	InMemoryStoreConfig  []inmemexporter.AggregationConfig `yaml:"store"`
+	OTLPExporterEndpoint string
+	OTLPExporterHeaders  map[string]string
 }
 
 // LoadConfigFromYamlFile loads collector configuration from an yaml file.

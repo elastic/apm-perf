@@ -9,6 +9,7 @@ import (
 	"errors"
 	"flag"
 	"log"
+	"net/url"
 	"os"
 	"os/signal"
 	"sync"
@@ -30,6 +31,21 @@ func main() {
 
 	// Create otel collector
 	collectorCfg := otelcollector.DefaultConfig()
+	if cfg.APMServerURL != "" {
+		apmURL, err := url.Parse(cfg.APMServerURL)
+		if err != nil {
+			logger.Fatal("invalid apm-server-url specified")
+		}
+		collectorCfg.OTLPExporterEndpoint = apmURL.Host
+		if apmURL.Port() == "" {
+			collectorCfg.OTLPExporterEndpoint += ":443"
+		}
+		if cfg.APMSecretToken != "" {
+			collectorCfg.OTLPExporterHeaders = map[string]string{
+				"Authorization": "Bearer " + cfg.APMSecretToken,
+			}
+		}
+	}
 	if cfg.CollectorConfigYaml != "" {
 		err := collectorCfg.LoadConfigFromYamlFile(cfg.CollectorConfigYaml)
 		if err != nil {
@@ -94,9 +110,11 @@ func main() {
 	); err != nil {
 		logger.Fatal("failed to run benchmarks", zap.Error(err))
 	}
+	logger.Info("finished running benchmarks")
 
 	// If server-mode is enabled then keep the otel collector running
 	if cfg.ServerMode {
+		logger.Info("continuing to serve OTEL collector endpoints")
 		c := make(chan os.Signal, 1)
 		signal.Notify(c, os.Interrupt)
 		<-c

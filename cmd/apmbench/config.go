@@ -22,6 +22,8 @@ var cfg struct {
 	AgentsList          []int
 	CollectorConfigYaml string
 	ServerMode          bool
+	APMServerURL        string
+	APMSecretToken      string
 }
 
 func init() {
@@ -60,4 +62,6 @@ func init() {
 	)
 	flag.StringVar(&cfg.CollectorConfigYaml, "collector-config-yaml", "", "configuration for otel collector")
 	flag.BoolVar(&cfg.ServerMode, "server-mode", false, "continue running otel collector post benchmark run")
+	flag.StringVar(&cfg.APMServerURL, "apm-server-url", "", "monitoring APM server URL")
+	flag.StringVar(&cfg.APMSecretToken, "apm-secret-token", "", "monitoring APM secret token")
 }
