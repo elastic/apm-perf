@@ -116,7 +116,7 @@ func TestAdd(t *testing.T) {
 			expected: []float64{
 				2.2,  // last
 				3.3,  // sum
-				1.65, // sum_per_sec
+				1.65, // rate
 			},
 		},
 		{
@@ -137,7 +137,7 @@ func TestAdd(t *testing.T) {
 			expected: []float64{
 				2.2,  // last
 				3.3,  // sum
-				1.65, // sum_per_sec
+				1.65, // rate
 			},
 		},
 		{
@@ -197,7 +197,7 @@ func TestAdd(t *testing.T) {
 			expected: []float64{
 				3.3, // last
 				4.4, // sum
-				2.2, // sum_per_sec
+				2.2, // rate
 			},
 		},
 	} {
@@ -277,11 +277,11 @@ func getTestAggCfg() ([]string, []AggregationConfig) {
 			Type: Sum,
 		},
 		{
-			Name: "test_sum_per_sec",
+			Name: "test_rate",
 			MatchLabelValues: map[string]string{
 				"k_1": "v_1",
 			},
-			Type: SumPerSec,
+			Type: Rate,
 		},
 	}
 

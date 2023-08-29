@@ -22,9 +22,9 @@ import (
 type AggregationType string
 
 const (
-	Last      AggregationType = "last"
-	Sum       AggregationType = "sum"
-	SumPerSec AggregationType = "sum_per_sec"
+	Last AggregationType = "last"
+	Sum  AggregationType = "sum"
+	Rate AggregationType = "rate"
 )
 
 // Store is a in-memory data store for telemetry data. Data
@@ -168,7 +168,7 @@ func (s *Store) Get(cfg AggregationConfig) (float64, error) {
 		return 0, nil
 	}
 	switch cfg.Type {
-	case SumPerSec:
+	case Rate:
 		duration := time.Duration(dp.Timestamp() - dp.StartTimestamp()).Seconds()
 		if duration <= 0 {
 			return 0, nil
@@ -245,7 +245,7 @@ func (s *Store) mergeNumberDataPoints(
 				to.SetDoubleValue(doubleValue(dp))
 			case Sum:
 				to.SetDoubleValue(to.DoubleValue() + doubleValue(dp))
-			case SumPerSec:
+			case Rate:
 				to.SetDoubleValue(to.DoubleValue() + doubleValue(dp))
 				// We will use to#StartTimestamp and to#Timestamp fields to
 				// cache the lowest and the highest timestamps. This will be
