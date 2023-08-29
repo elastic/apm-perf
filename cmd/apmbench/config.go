@@ -17,11 +17,11 @@ import (
 var cfg struct {
 	Count     uint
 	Benchtime time.Duration
-	Detailed  bool
 	RunRE     *regexp.Regexp
 	// Sorted list of agents count to be used for benchmarking
 	AgentsList          []int
 	CollectorConfigYaml string
+	ServerMode          bool
 }
 
 func init() {
@@ -29,7 +29,6 @@ func init() {
 
 	flag.UintVar(&cfg.Count, "count", 1, "run benchmarks `n` times")
 	flag.DurationVar(&cfg.Benchtime, "benchtime", time.Second, "run each benchmark for duration `d`")
-	flag.BoolVar(&cfg.Detailed, "detailed", false, "Get detailed metrics recorded during benchmark")
 	flag.Func("run", "run only benchmarks matching `regexp`", func(restr string) error {
 		if restr != "" {
 			re, err := regexp.Compile(restr)
@@ -60,4 +59,5 @@ func init() {
 		},
 	)
 	flag.StringVar(&cfg.CollectorConfigYaml, "collector-config-yaml", "", "configuration for otel collector")
+	flag.BoolVar(&cfg.ServerMode, "server-mode", false, "continue running otel collector post benchmark run")
 }
