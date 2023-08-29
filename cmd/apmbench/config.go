@@ -21,6 +21,7 @@ var cfg struct {
 	// Sorted list of agents count to be used for benchmarking
 	AgentsList          []int
 	CollectorConfigYaml string
+	ServerMode          bool
 }
 
 func init() {
@@ -58,4 +59,5 @@ func init() {
 		},
 	)
 	flag.StringVar(&cfg.CollectorConfigYaml, "collector-config-yaml", "", "configuration for otel collector")
+	flag.BoolVar(&cfg.ServerMode, "server-mode", false, "continue running otel collector post benchmark run")
 }

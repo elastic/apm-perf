@@ -9,6 +9,8 @@ import (
 	"errors"
 	"flag"
 	"log"
+	"os"
+	"os/signal"
 	"sync"
 	"testing"
 	"time"
@@ -95,6 +97,13 @@ func main() {
 		Benchmark10000AggregationGroups,
 	); err != nil {
 		logger.Fatal("failed to run benchmarks", zap.Error(err))
+	}
+
+	// If server-mode is enabled then keep the otel collector running
+	if cfg.ServerMode {
+		c := make(chan os.Signal, 1)
+		signal.Notify(c, os.Interrupt, os.Kill)
+		<-c
 	}
 }
 
