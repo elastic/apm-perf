@@ -13,10 +13,12 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/cumulativetodeltaprocessor"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/config/configtelemetry"
 	"go.opentelemetry.io/collector/exporter"
 	"go.opentelemetry.io/collector/otelcol"
+	"go.opentelemetry.io/collector/processor"
 	"go.opentelemetry.io/collector/receiver"
 	otlpreceiver "go.opentelemetry.io/collector/receiver/otlpreceiver"
 	"go.opentelemetry.io/collector/service"
@@ -47,6 +49,11 @@ func New(cfg CollectorConfig, logger *zap.Logger) (*Collector, error) {
 	factories := otelcol.Factories{}
 	otlpReceiverFactory := otlpreceiver.NewFactory()
 	factories.Receivers, err = receiver.MakeFactoryMap(otlpReceiverFactory)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create collector: %w", err)
+	}
+
+	factories.Processors, err = processor.MakeFactoryMap(cumulativetodeltaprocessor.NewFactory())
 	if err != nil {
 		return nil, fmt.Errorf("failed to create collector: %w", err)
 	}
@@ -137,14 +144,18 @@ func (p staticConfigProvider) Get(
 		Receivers: map[component.ID]component.Config{
 			component.NewID("otlp"): p.otlpReceiverConfig,
 		},
+		Processors: map[component.ID]component.Config{
+			component.NewID("cumulativetodelta"): &cumulativetodeltaprocessor.Config{},
+		},
 		Exporters: map[component.ID]component.Config{
 			component.NewID("inmem"): &inmemexporter.Config{},
 		},
 		Service: service.Config{
 			Pipelines: map[component.ID]*pipelines.PipelineConfig{
 				component.NewID("metrics"): &pipelines.PipelineConfig{
-					Receivers: []component.ID{component.NewID("otlp")},
-					Exporters: []component.ID{component.NewID("inmem")},
+					Receivers:  []component.ID{component.NewID("otlp")},
+					Processors: []component.ID{component.NewID("cumulativetodelta")},
+					Exporters:  []component.ID{component.NewID("inmem")},
 				},
 				component.NewID("traces"): &pipelines.PipelineConfig{
 					Receivers: []component.ID{component.NewID("otlp")},
