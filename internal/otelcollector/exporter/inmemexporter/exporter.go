@@ -32,12 +32,12 @@ func new(cfg Config, store *Store, logger *zap.Logger) *inMemExporter {
 }
 
 func (e *inMemExporter) consumeMetrics(_ context.Context, ld pmetric.Metrics) error {
-	e.logger.Info("received metrics", zap.Int("count", ld.MetricCount()))
+	e.logger.Debug("received metrics", zap.Int("count", ld.MetricCount()))
 	e.store.Add(ld)
 	return nil
 }
 
 func (e *inMemExporter) consumeTraces(_ context.Context, ld ptrace.Traces) error {
-	e.logger.Info("received traces", zap.Int("count", ld.SpanCount()))
+	e.logger.Debug("received traces", zap.Int("count", ld.SpanCount()))
 	return nil
 }
