@@ -98,7 +98,7 @@ func main() {
 	// If server-mode is enabled then keep the otel collector running
 	if cfg.ServerMode {
 		c := make(chan os.Signal, 1)
-		signal.Notify(c, os.Interrupt, os.Kill)
+		signal.Notify(c, os.Interrupt)
 		<-c
 	}
 }
