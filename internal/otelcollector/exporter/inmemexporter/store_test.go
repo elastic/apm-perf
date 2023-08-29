@@ -87,7 +87,7 @@ func TestAdd(t *testing.T) {
 	}{
 		{
 			name: "no_config",
-			input: newMetrics().addMetric(
+			input: newMetrics(nil).addMetric(
 				[]string{"404"}, 1.1,
 				nil,
 				pmetric.MetricTypeGauge,
@@ -96,7 +96,7 @@ func TestAdd(t *testing.T) {
 		},
 		{
 			name: "filtered_input",
-			input: newMetrics().
+			input: newMetrics(nil).
 				addMetric(
 					allMetricNames, 1.1,
 					map[string]string{"k_1": "v_1"},
@@ -112,8 +112,25 @@ func TestAdd(t *testing.T) {
 			},
 		},
 		{
+			name: "filtered_input_with_resource_attrs",
+			input: newMetrics(map[string]string{"k_1": "v_1", "k_2": "v_2"}).
+				addMetric(
+					allMetricNames, 1.1,
+					nil,
+					pmetric.MetricTypeGauge).
+				addMetric(
+					allMetricNames, 2.2,
+					map[string]string{"k_3": "v_3"},
+					pmetric.MetricTypeGauge).
+				get(),
+			expected: []float64{
+				3.3, // sum
+				2.2, // last
+			},
+		},
+		{
 			name: "unfiltered_input",
-			input: newMetrics().
+			input: newMetrics(nil).
 				// no labels
 				addMetric(
 					allMetricNames, 1.1,
@@ -139,7 +156,7 @@ func TestAdd(t *testing.T) {
 		},
 		{
 			name: "mixed_input",
-			input: newMetrics().
+			input: newMetrics(nil).
 				addMetric(
 					allMetricNames, 1.1,
 					map[string]string{"k_1": "v_1"},
@@ -178,13 +195,15 @@ type testMetricSlice struct {
 	ms pmetric.MetricSlice
 }
 
-func newMetrics() testMetricSlice {
+func newMetrics(resAttrs map[string]string) testMetricSlice {
 	m := pmetric.NewMetrics()
+	rm := m.ResourceMetrics().AppendEmpty()
+	for k, v := range resAttrs {
+		rm.Resource().Attributes().PutStr(k, v)
+	}
 	return testMetricSlice{
-		m: m,
-		ms: m.ResourceMetrics().AppendEmpty().
-			ScopeMetrics().AppendEmpty().
-			Metrics(),
+		m:  m,
+		ms: rm.ScopeMetrics().AppendEmpty().Metrics(),
 	}
 }
 
