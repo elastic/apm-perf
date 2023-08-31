@@ -6,6 +6,7 @@ package otelcollector
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 
 	"go.uber.org/zap/zapcore"
@@ -36,6 +37,16 @@ func (cfg *CollectorConfig) LoadConfigFromYamlFile(path string) error {
 	dec := yaml.NewDecoder(file)
 	if err := dec.Decode(cfg); err != nil {
 		return fmt.Errorf("failed to decode config file: %w", err)
+	}
+	if cfg.OTLPExporterEndpoint != "" {
+		ep, err := url.Parse(cfg.OTLPExporterEndpoint)
+		if err != nil {
+			return fmt.Errorf("invalid OTLP exporter endpoint specified: %w", err)
+		}
+		cfg.OTLPExporterEndpoint = ep.Host
+		if ep.Port() == "" {
+			cfg.OTLPExporterEndpoint += ":443"
+		}
 	}
 
 	return nil

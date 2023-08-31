@@ -29,10 +29,13 @@ func TestLoadConfigFromYamlFile(t *testing.T) {
 			errMsg: "failed to decode config file",
 		},
 		{
-			name: "valid_yaml",
+			name: "valid_yaml_without_exporter_ep_port",
 			input: []byte(`
 http_endpoint: localhost:8181
 grpc_endpoint: localhost:8182
+otlp_exporter_endpoint: https://apm-server
+otlp_exporter_headers:
+  Authorization: Bearer secret_token
 store:
   - name: test.metric.count
     alias: events/s
@@ -40,8 +43,45 @@ store:
       k_1: v_1
       k_2: v_2`),
 			output: CollectorConfig{
-				HTTPEndpoint: "localhost:8181",
-				GRPCEndpoint: "localhost:8182",
+				HTTPEndpoint:         "localhost:8181",
+				GRPCEndpoint:         "localhost:8182",
+				OTLPExporterEndpoint: "apm-server:443",
+				OTLPExporterHeaders: map[string]string{
+					"Authorization": "Bearer secret_token",
+				},
+				InMemoryStoreConfig: []inmemexporter.AggregationConfig{
+					{
+						Name:  "test.metric.count",
+						Alias: "events/s",
+						MatchLabelValues: map[string]string{
+							"k_1": "v_1",
+							"k_2": "v_2",
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "valid_yaml_with_exporter_ep_port",
+			input: []byte(`
+http_endpoint: localhost:8181
+grpc_endpoint: localhost:8182
+otlp_exporter_endpoint: https://apm-server:4171
+otlp_exporter_headers:
+  Authorization: Bearer secret_token
+store:
+  - name: test.metric.count
+    alias: events/s
+    match_label_values:
+      k_1: v_1
+      k_2: v_2`),
+			output: CollectorConfig{
+				HTTPEndpoint:         "localhost:8181",
+				GRPCEndpoint:         "localhost:8182",
+				OTLPExporterEndpoint: "apm-server:4171",
+				OTLPExporterHeaders: map[string]string{
+					"Authorization": "Bearer secret_token",
+				},
 				InMemoryStoreConfig: []inmemexporter.AggregationConfig{
 					{
 						Name:  "test.metric.count",
