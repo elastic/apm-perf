@@ -19,8 +19,8 @@ type CollectorConfig struct {
 	HTTPEndpoint         string                            `yaml:"http_endpoint"`
 	GRPCEndpoint         string                            `yaml:"grpc_endpoint"`
 	InMemoryStoreConfig  []inmemexporter.AggregationConfig `yaml:"store"`
-	OTLPExporterEndpoint string
-	OTLPExporterHeaders  map[string]string
+	OTLPExporterEndpoint string                            `yaml:"otlp_exporter_endpoint"`
+	OTLPExporterHeaders  map[string]string                 `yaml:"otlp_exporter_headers"`
 }
 
 // LoadConfigFromYamlFile loads collector configuration from an yaml file.
