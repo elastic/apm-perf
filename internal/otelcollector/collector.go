@@ -22,6 +22,7 @@ import (
 	"go.opentelemetry.io/collector/exporter/otlpexporter"
 	"go.opentelemetry.io/collector/otelcol"
 	"go.opentelemetry.io/collector/processor"
+	"go.opentelemetry.io/collector/processor/batchprocessor"
 	"go.opentelemetry.io/collector/receiver"
 	otlpreceiver "go.opentelemetry.io/collector/receiver/otlpreceiver"
 	"go.opentelemetry.io/collector/service"
@@ -56,7 +57,10 @@ func New(cfg CollectorConfig, logger *zap.Logger) (*Collector, error) {
 		return nil, fmt.Errorf("failed to create collector: %w", err)
 	}
 
-	factories.Processors, err = processor.MakeFactoryMap(cumulativetodeltaprocessor.NewFactory())
+	factories.Processors, err = processor.MakeFactoryMap(
+		cumulativetodeltaprocessor.NewFactory(),
+		batchprocessor.NewFactory(),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create collector: %w", err)
 	}
@@ -206,6 +210,9 @@ func (p staticConfigProvider) getReceivers() map[component.ID]component.Config {
 func (p staticConfigProvider) getProcessors() map[component.ID]component.Config {
 	return map[component.ID]component.Config{
 		component.NewID("cumulativetodelta"): &cumulativetodeltaprocessor.Config{},
+		component.NewID("batch"): &batchprocessor.Config{
+			SendBatchMaxSize: 4 << 20, // 4MB
+		},
 	}
 }
 
@@ -225,23 +232,33 @@ func (p staticConfigProvider) getExporters() map[component.ID]component.Config {
 }
 
 func (p staticConfigProvider) getPipelines() map[component.ID]*pipelines.PipelineConfig {
-	tracesExporters := []component.ID{component.NewID("inmem")}
-	metricsExporters := []component.ID{component.NewID("inmem")}
-	if p.otlpExporterEndpoint != "" {
-		// TODO (lahsivjar): Add batch processor?
-		metricsExporters = append(metricsExporters, component.NewID("otlp"))
-		// In mem exporter is a noOp for traces, override if otlp exporter is enabled
-		tracesExporters = []component.ID{component.NewID("otlp")}
-	}
-	return map[component.ID]*pipelines.PipelineConfig{
+	pipes := map[component.ID]*pipelines.PipelineConfig{
 		component.NewID("metrics"): &pipelines.PipelineConfig{
 			Receivers:  []component.ID{component.NewID("otlp")},
 			Processors: []component.ID{component.NewID("cumulativetodelta")},
-			Exporters:  metricsExporters,
-		},
-		component.NewID("traces"): &pipelines.PipelineConfig{
-			Receivers: []component.ID{component.NewID("otlp")},
-			Exporters: tracesExporters,
+			Exporters:  []component.ID{component.NewID("inmem")},
 		},
 	}
+	if p.otlpExporterEndpoint != "" {
+		pipes[component.NewIDWithName("metrics", "2")] = &pipelines.PipelineConfig{
+			Receivers: []component.ID{component.NewID("otlp")},
+			Processors: []component.ID{
+				component.NewID("cumulativetodelta"),
+				component.NewID("batch"),
+			},
+			Exporters: []component.ID{component.NewID("otlp")},
+		}
+		pipes[component.NewID("traces")] = &pipelines.PipelineConfig{
+			Receivers:  []component.ID{component.NewID("otlp")},
+			Processors: []component.ID{component.NewID("batch")},
+			Exporters:  []component.ID{component.NewID("otlp")},
+		}
+	} else {
+		// Enable traces endpoint with a noOp if no otlp exporter is configured
+		pipes[component.NewID("traces")] = &pipelines.PipelineConfig{
+			Receivers: []component.ID{component.NewID("otlp")},
+			Exporters: []component.ID{component.NewID("inmem")},
+		}
+	}
+	return pipes
 }
