@@ -30,8 +30,6 @@ func main() {
 
 	// Create otel collector
 	collectorCfg := otelcollector.DefaultConfig()
-	if cfg.MonitoringAPMServerURL != "" {
-	}
 	if cfg.CollectorConfigYaml != "" {
 		err := collectorCfg.LoadConfigFromYamlFile(cfg.CollectorConfigYaml)
 		if err != nil {
