@@ -31,8 +31,8 @@ func main() {
 
 	// Create otel collector
 	collectorCfg := otelcollector.DefaultConfig()
-	if cfg.APMServerURL != "" {
-		apmURL, err := url.Parse(cfg.APMServerURL)
+	if cfg.MonitoringAPMServerURL != "" {
+		apmURL, err := url.Parse(cfg.MonitoringAPMServerURL)
 		if err != nil {
 			logger.Fatal("invalid apm-server-url specified")
 		}
@@ -40,9 +40,9 @@ func main() {
 		if apmURL.Port() == "" {
 			collectorCfg.OTLPExporterEndpoint += ":443"
 		}
-		if cfg.APMSecretToken != "" {
+		if cfg.MonitoringAPMSecretToken != "" {
 			collectorCfg.OTLPExporterHeaders = map[string]string{
-				"Authorization": "Bearer " + cfg.APMSecretToken,
+				"Authorization": "Bearer " + cfg.MonitoringAPMSecretToken,
 			}
 		}
 	}
