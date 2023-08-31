@@ -19,11 +19,9 @@ var cfg struct {
 	Benchtime time.Duration
 	RunRE     *regexp.Regexp
 	// Sorted list of agents count to be used for benchmarking
-	AgentsList               []int
-	CollectorConfigYaml      string
-	ServerMode               bool
-	MonitoringAPMServerURL   string
-	MonitoringAPMSecretToken string
+	AgentsList          []int
+	CollectorConfigYaml string
+	ServerMode          bool
 }
 
 func init() {
@@ -62,6 +60,4 @@ func init() {
 	)
 	flag.StringVar(&cfg.CollectorConfigYaml, "collector-config-yaml", "", "configuration for otel collector")
 	flag.BoolVar(&cfg.ServerMode, "server-mode", false, "continue running otel collector post benchmark run")
-	flag.StringVar(&cfg.MonitoringAPMServerURL, "monitoring-apm-server-url", "", "monitoring APM server URL")
-	flag.StringVar(&cfg.MonitoringAPMSecretToken, "monitoring-apm-secret-token", "", "monitoring APM secret token")
 }
