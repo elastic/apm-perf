@@ -125,6 +125,7 @@ func Benchmark10000AggregationGroups(b *testing.B, l *rate.Limiter) {
 func newTracer(tb testing.TB) *apm.Tracer {
 	httpTransport, err := transport.NewHTTPTransport(transport.HTTPTransportOptions{
 		ServerURLs:  []*url.URL{loadgencfg.Config.ServerURL},
+		APIKey:      loadgencfg.Config.APIKey,
 		SecretToken: loadgencfg.Config.SecretToken,
 	})
 	if err != nil {
@@ -147,6 +148,7 @@ func newTracer(tb testing.TB) *apm.Tracer {
 func newOTLPExporter(tb testing.TB) *otlptrace.Exporter {
 	serverURL := loadgencfg.Config.ServerURL
 	secretToken := loadgencfg.Config.SecretToken
+	apiKey := loadgencfg.Config.APIKey
 	endpoint := serverURL.Host
 	if serverURL.Port() == "" {
 		switch serverURL.Scheme {
@@ -156,14 +158,24 @@ func newOTLPExporter(tb testing.TB) *otlptrace.Exporter {
 			endpoint += ":443"
 		}
 	}
+
+	headers := make(map[string]string)
+	for k, v := range loadgencfg.Config.Headers {
+		headers[k] = v
+	}
+	if secretToken != "" || apiKey != "" {
+		if apiKey != "" {
+			// higher priority to APIKey auth
+			headers["Authorization"] = "ApiKey " + apiKey
+		} else {
+			headers["Authorization"] = "Bearer " + secretToken
+		}
+	}
+
 	opts := []otlptracegrpc.Option{
 		otlptracegrpc.WithEndpoint(endpoint),
 		otlptracegrpc.WithDialOption(grpc.WithBlock()),
-	}
-	if secretToken != "" {
-		opts = append(opts, otlptracegrpc.WithHeaders(map[string]string{
-			"Authorization": "Bearer " + secretToken,
-		}))
+		otlptracegrpc.WithHeaders(headers),
 	}
 	if serverURL.Scheme == "http" {
 		opts = append(opts, otlptracegrpc.WithInsecure())
