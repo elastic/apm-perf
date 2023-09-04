@@ -94,9 +94,11 @@ func main() {
 	); err != nil {
 		logger.Fatal("failed to run benchmarks", zap.Error(err))
 	}
+	logger.Info("finished running benchmarks")
 
 	// If server-mode is enabled then keep the otel collector running
 	if cfg.ServerMode {
+		logger.Info("continuing to serve OTEL collector endpoints")
 		c := make(chan os.Signal, 1)
 		signal.Notify(c, os.Interrupt)
 		<-c

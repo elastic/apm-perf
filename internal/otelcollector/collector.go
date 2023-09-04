@@ -15,10 +15,14 @@ import (
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/cumulativetodeltaprocessor"
 	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/config/configgrpc"
+	"go.opentelemetry.io/collector/config/configopaque"
 	"go.opentelemetry.io/collector/config/configtelemetry"
 	"go.opentelemetry.io/collector/exporter"
+	"go.opentelemetry.io/collector/exporter/otlpexporter"
 	"go.opentelemetry.io/collector/otelcol"
 	"go.opentelemetry.io/collector/processor"
+	"go.opentelemetry.io/collector/processor/batchprocessor"
 	"go.opentelemetry.io/collector/receiver"
 	otlpreceiver "go.opentelemetry.io/collector/receiver/otlpreceiver"
 	"go.opentelemetry.io/collector/service"
@@ -53,12 +57,18 @@ func New(cfg CollectorConfig, logger *zap.Logger) (*Collector, error) {
 		return nil, fmt.Errorf("failed to create collector: %w", err)
 	}
 
-	factories.Processors, err = processor.MakeFactoryMap(cumulativetodeltaprocessor.NewFactory())
+	factories.Processors, err = processor.MakeFactoryMap(
+		cumulativetodeltaprocessor.NewFactory(),
+		batchprocessor.NewFactory(),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create collector: %w", err)
 	}
 
-	factories.Exporters, err = exporter.MakeFactoryMap(inmemexporter.NewFactory(store))
+	factories.Exporters, err = exporter.MakeFactoryMap(
+		inmemexporter.NewFactory(store),
+		otlpexporter.NewFactory(),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create collector: %w", err)
 	}
@@ -73,9 +83,11 @@ func New(cfg CollectorConfig, logger *zap.Logger) (*Collector, error) {
 	collector, err := otelcol.NewCollector(otelcol.CollectorSettings{
 		BuildInfo: component.NewDefaultBuildInfo(),
 		Factories: factories,
-		ConfigProvider: staticConfigProvider{
-			otlpReceiverConfig: otlpReceiverCfg,
-		},
+		ConfigProvider: newStaticConfigProvider(
+			otlpReceiverCfg,
+			cfg.OTLPExporterEndpoint,
+			cfg.OTLPExporterHeaders,
+		),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create collector: %w", err)
@@ -133,7 +145,25 @@ func (c *Collector) Reset() {
 }
 
 type staticConfigProvider struct {
-	otlpReceiverConfig *otlpreceiver.Config
+	otlpReceiverConfig   *otlpreceiver.Config
+	otlpExporterEndpoint string
+	otlpExporterHeaders  map[string]configopaque.String
+}
+
+func newStaticConfigProvider(
+	otlpReceiverConfig *otlpreceiver.Config,
+	otlpExporterEndpoint string,
+	otlpExporterHeaders map[string]string,
+) staticConfigProvider {
+	exporterHeaders := make(map[string]configopaque.String, len(otlpExporterHeaders))
+	for k, v := range otlpExporterHeaders {
+		exporterHeaders[k] = configopaque.String(v)
+	}
+	return staticConfigProvider{
+		otlpReceiverConfig:   otlpReceiverConfig,
+		otlpExporterEndpoint: otlpExporterEndpoint,
+		otlpExporterHeaders:  exporterHeaders,
+	}
 }
 
 func (p staticConfigProvider) Get(
@@ -141,27 +171,11 @@ func (p staticConfigProvider) Get(
 	factories otelcol.Factories,
 ) (*otelcol.Config, error) {
 	return &otelcol.Config{
-		Receivers: map[component.ID]component.Config{
-			component.NewID("otlp"): p.otlpReceiverConfig,
-		},
-		Processors: map[component.ID]component.Config{
-			component.NewID("cumulativetodelta"): &cumulativetodeltaprocessor.Config{},
-		},
-		Exporters: map[component.ID]component.Config{
-			component.NewID("inmem"): &inmemexporter.Config{},
-		},
+		Receivers:  p.getReceivers(),
+		Processors: p.getProcessors(),
+		Exporters:  p.getExporters(),
 		Service: service.Config{
-			Pipelines: map[component.ID]*pipelines.PipelineConfig{
-				component.NewID("metrics"): &pipelines.PipelineConfig{
-					Receivers:  []component.ID{component.NewID("otlp")},
-					Processors: []component.ID{component.NewID("cumulativetodelta")},
-					Exporters:  []component.ID{component.NewID("inmem")},
-				},
-				component.NewID("traces"): &pipelines.PipelineConfig{
-					Receivers: []component.ID{component.NewID("otlp")},
-					Exporters: []component.ID{component.NewID("inmem")},
-				},
-			},
+			Pipelines: p.getPipelines(),
 			Telemetry: telemetry.Config{
 				Logs: telemetry.LogsConfig{
 					Level:            zapcore.InfoLevel,
@@ -185,4 +199,66 @@ func (p staticConfigProvider) Watch() <-chan error {
 
 func (p staticConfigProvider) Shutdown(ctx context.Context) error {
 	return nil
+}
+
+func (p staticConfigProvider) getReceivers() map[component.ID]component.Config {
+	return map[component.ID]component.Config{
+		component.NewID("otlp"): p.otlpReceiverConfig,
+	}
+}
+
+func (p staticConfigProvider) getProcessors() map[component.ID]component.Config {
+	return map[component.ID]component.Config{
+		component.NewID("cumulativetodelta"): &cumulativetodeltaprocessor.Config{},
+		component.NewID("batch"): &batchprocessor.Config{
+			SendBatchMaxSize: 4 << 20, // 4MB
+		},
+	}
+}
+
+func (p staticConfigProvider) getExporters() map[component.ID]component.Config {
+	exporters := map[component.ID]component.Config{
+		component.NewID("inmem"): &inmemexporter.Config{},
+	}
+	if p.otlpExporterEndpoint != "" {
+		exporters[component.NewID("otlp")] = &otlpexporter.Config{
+			GRPCClientSettings: configgrpc.GRPCClientSettings{
+				Endpoint: p.otlpExporterEndpoint,
+				Headers:  p.otlpExporterHeaders,
+			},
+		}
+	}
+	return exporters
+}
+
+func (p staticConfigProvider) getPipelines() map[component.ID]*pipelines.PipelineConfig {
+	pipes := map[component.ID]*pipelines.PipelineConfig{
+		component.NewID("metrics"): &pipelines.PipelineConfig{
+			Receivers:  []component.ID{component.NewID("otlp")},
+			Processors: []component.ID{component.NewID("cumulativetodelta")},
+			Exporters:  []component.ID{component.NewID("inmem")},
+		},
+	}
+	if p.otlpExporterEndpoint != "" {
+		pipes[component.NewIDWithName("metrics", "2")] = &pipelines.PipelineConfig{
+			Receivers: []component.ID{component.NewID("otlp")},
+			Processors: []component.ID{
+				component.NewID("cumulativetodelta"),
+				component.NewID("batch"),
+			},
+			Exporters: []component.ID{component.NewID("otlp")},
+		}
+		pipes[component.NewID("traces")] = &pipelines.PipelineConfig{
+			Receivers:  []component.ID{component.NewID("otlp")},
+			Processors: []component.ID{component.NewID("batch")},
+			Exporters:  []component.ID{component.NewID("otlp")},
+		}
+	} else {
+		// Enable traces endpoint with a noOp if no otlp exporter is configured
+		pipes[component.NewID("traces")] = &pipelines.PipelineConfig{
+			Receivers: []component.ID{component.NewID("otlp")},
+			Exporters: []component.ID{component.NewID("inmem")},
+		}
+	}
+	return pipes
 }

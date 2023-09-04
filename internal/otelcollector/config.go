@@ -6,6 +6,7 @@ package otelcollector
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 
 	"go.uber.org/zap/zapcore"
@@ -16,9 +17,11 @@ import (
 
 // CollectorConfig defines the configuration to customize the collector.
 type CollectorConfig struct {
-	HTTPEndpoint        string                            `yaml:"http_endpoint"`
-	GRPCEndpoint        string                            `yaml:"grpc_endpoint"`
-	InMemoryStoreConfig []inmemexporter.AggregationConfig `yaml:"store"`
+	HTTPEndpoint         string                            `yaml:"http_endpoint"`
+	GRPCEndpoint         string                            `yaml:"grpc_endpoint"`
+	InMemoryStoreConfig  []inmemexporter.AggregationConfig `yaml:"store"`
+	OTLPExporterEndpoint string                            `yaml:"otlp_exporter_endpoint"`
+	OTLPExporterHeaders  map[string]string                 `yaml:"otlp_exporter_headers"`
 }
 
 // LoadConfigFromYamlFile loads collector configuration from an yaml file.
@@ -34,6 +37,16 @@ func (cfg *CollectorConfig) LoadConfigFromYamlFile(path string) error {
 	dec := yaml.NewDecoder(file)
 	if err := dec.Decode(cfg); err != nil {
 		return fmt.Errorf("failed to decode config file: %w", err)
+	}
+	if cfg.OTLPExporterEndpoint != "" {
+		ep, err := url.Parse(cfg.OTLPExporterEndpoint)
+		if err != nil {
+			return fmt.Errorf("invalid OTLP exporter endpoint specified: %w", err)
+		}
+		cfg.OTLPExporterEndpoint = ep.Host
+		if ep.Port() == "" {
+			cfg.OTLPExporterEndpoint += ":443"
+		}
 	}
 
 	return nil
