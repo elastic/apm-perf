@@ -76,25 +76,27 @@ func Run(
 		runtime.GOMAXPROCS(agents)
 		for _, b := range benchmarks {
 			name := fullBenchmarkName(b.name, agents)
-			result := runOne(extraMetrics, resetStore, b.fn)
-			// testing.Benchmark discards all output so the only thing we can
-			// retrive is the benchmark status and result.
-			if result.skipped {
-				fmt.Printf("--- SKIP: %s\n", name)
-				continue
+			for i := 0; i < int(cfg.Count); i++ {
+				result := runOne(extraMetrics, resetStore, b.fn)
+				// testing.Benchmark discards all output so the only thing we can
+				// retrive is the benchmark status and result.
+				if result.skipped {
+					fmt.Printf("--- SKIP: %s\n", name)
+					continue
+				}
+				if result.failed {
+					fmt.Printf("--- FAIL: %s\n", name)
+					return fmt.Errorf("benchmark %q failed", name)
+				}
+				fmt.Printf("%-*s\t%s\n", maxLen, name, result.benchResult)
+				// Sleep to allow any remaining data to be consumed by the pipelines
+				// so that they don't pollute the result of the next benchmark run.
+				//
+				// TODO (lahsivjar): Make this deterministic by introducing cleanup
+				// metrics. We can watch the cleanup metrics to reach to a specified
+				// threshold and then run the next benchmark.
+				time.Sleep(time.Minute)
 			}
-			if result.failed {
-				fmt.Printf("--- FAIL: %s\n", name)
-				return fmt.Errorf("benchmark %q failed", name)
-			}
-			fmt.Printf("%-*s\t%s\n", maxLen, name, result.benchResult)
-			// Sleep to allow any remaining data to be consumed by the pipelines
-			// so that they don't pollute the result of the next benchmark run.
-			//
-			// TODO (lahsivjar): Make this deterministic by introducing cleanup
-			// metrics. We can watch the cleanup metrics to reach to a specified
-			// threshold and then run the next benchmark.
-			time.Sleep(time.Minute)
 		}
 	}
 	return nil
