@@ -12,6 +12,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	"go.elastic.co/apm/v2/stacktrace"
 	"golang.org/x/time/rate"
@@ -87,6 +88,13 @@ func Run(
 				return fmt.Errorf("benchmark %q failed", name)
 			}
 			fmt.Printf("%-*s\t%s\n", maxLen, name, result.benchResult)
+			// Sleep to allow any remaining data to be consumed by the pipelines
+			// so that they don't pollute the result of the next benchmark run.
+			//
+			// TODO (lahsivjar): Make this deterministic by introducing cleanup
+			// metrics. We can watch the cleanup metrics to reach to a specified
+			// threshold and then run the next benchmark.
+			time.Sleep(time.Minute)
 		}
 	}
 	return nil

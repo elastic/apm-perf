@@ -246,21 +246,24 @@ func (s *Store) mergeNumberDataPoints(
 			case Sum:
 				to.SetDoubleValue(to.DoubleValue() + doubleValue(dp))
 			case Rate:
-				to.SetDoubleValue(to.DoubleValue() + doubleValue(dp))
-				// We will use to#StartTimestamp and to#Timestamp fields to
-				// cache the lowest and the highest timestamps. This will be
-				// used at query time to calculate rate.
-				if to.StartTimestamp() == 0 {
-					// If the data point has a start timestamp then use that
-					// as the start timestamp, else use the end timestamp.
-					if dp.StartTimestamp() != 0 {
-						to.SetStartTimestamp(dp.StartTimestamp())
-					} else {
-						to.SetStartTimestamp(dp.Timestamp())
+				val := doubleValue(dp)
+				if val != 0 {
+					to.SetDoubleValue(to.DoubleValue() + val)
+					// We will use to#StartTimestamp and to#Timestamp fields to
+					// cache the lowest and the highest timestamps. This will be
+					// used at query time to calculate rate.
+					if to.StartTimestamp() == 0 {
+						// If the data point has a start timestamp then use that
+						// as the start timestamp, else use the end timestamp.
+						if dp.StartTimestamp() != 0 {
+							to.SetStartTimestamp(dp.StartTimestamp())
+						} else {
+							to.SetStartTimestamp(dp.Timestamp())
+						}
 					}
-				}
-				if to.Timestamp() < dp.Timestamp() {
-					to.SetTimestamp(dp.Timestamp())
+					if to.Timestamp() < dp.Timestamp() {
+						to.SetTimestamp(dp.Timestamp())
+					}
 				}
 			}
 		}
