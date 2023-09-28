@@ -28,13 +28,15 @@ type RunOptions struct {
 
 func (opts *RunOptions) toRunnerConfig() (*soaktest.RunnerConfig, error) {
 	apiKeys := make(map[string]string)
-	pairs := strings.Split(opts.APIKeys, ",")
-	for _, pair := range pairs {
-		kv := strings.Split(pair, ":")
-		if len(kv) != 2 {
-			return nil, errors.New("invalid api keys provided. example: project_id:my_api_key")
+	if opts.APIKeys != "" {
+		pairs := strings.Split(opts.APIKeys, ",")
+		for _, pair := range pairs {
+			kv := strings.Split(pair, ":")
+			if len(kv) != 2 {
+				return nil, errors.New("invalid api keys provided. example: project_id:my_api_key")
+			}
+			apiKeys[kv[0]] = kv[1]
 		}
-		apiKeys[kv[0]] = kv[1]
 	}
 	return &soaktest.RunnerConfig{
 		Scenario:      opts.Scenario,
