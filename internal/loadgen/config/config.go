@@ -21,6 +21,7 @@ var Config struct {
 	APIKey                    string
 	Secure                    bool
 	EventRate                 RateFlag
+	IgnoreErrors              bool
 	RewriteIDs                bool
 	RewriteTimestamps         bool
 	RewriteServiceNames       bool
@@ -110,6 +111,7 @@ func init() {
 		},
 	)
 	flag.Var(&Config.EventRate, "event-rate", "Event rate in format of {burst}/{interval}. For example, 200/5s, <= 0 values evaluate to Inf (default 0/s)")
+	flag.BoolVar(&Config.IgnoreErrors, "ignore-errors", false, "Ignore HTTP errors while sending events")
 
 	rewriteNames := map[string]*bool{
 		"service.name":        &Config.RewriteServiceNames,
