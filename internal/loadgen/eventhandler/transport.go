@@ -6,7 +6,6 @@ package eventhandler
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -37,7 +36,7 @@ func NewTransport(c *http.Client, srvURL, token, apiKey string, headers map[stri
 }
 
 // SendV2Events sends the reader contents to `/intake/v2/events` as a batch.
-func (t *Transport) SendV2Events(ctx context.Context, r io.Reader) error {
+func (t *Transport) SendV2Events(ctx context.Context, r io.Reader, ignoreErrs bool) error {
 	req, err := http.NewRequestWithContext(ctx, "POST", t.intakeV2URL, r)
 	if err != nil {
 		return err
@@ -46,27 +45,26 @@ func (t *Transport) SendV2Events(ctx context.Context, r io.Reader) error {
 	// set it to `-1` just like the agents would.
 	req.ContentLength = -1
 	req.Header = t.intakeHeaders
-	return t.sendEvents(req, r)
+	return t.sendEvents(req, r, ignoreErrs)
 }
 
-func (t *Transport) sendEvents(req *http.Request, r io.Reader) error {
+func (t *Transport) sendEvents(req *http.Request, r io.Reader, ignoreErrs bool) error {
 	res, err := t.client.Do(req)
 	if err != nil {
 		return err
 	}
 	defer res.Body.Close()
 
-	switch res.StatusCode {
-	case http.StatusOK, http.StatusAccepted:
-		return nil
+	if !ignoreErrs {
+		switch res.StatusCode / 100 {
+		case 4:
+			return fmt.Errorf("unexpected client error: %d", res.StatusCode)
+		case 5:
+			return fmt.Errorf("unexpected server error: %d", res.StatusCode)
+		}
 	}
 
-	msg := fmt.Sprintf("unexpected apm server response %d", res.StatusCode)
-	b, err := io.ReadAll(res.Body)
-	if err != nil {
-		return errors.New(msg)
-	}
-	return fmt.Errorf(msg+": %s", string(b))
+	return nil
 }
 
 func getAuthHeader(token string, apiKey string) string {

@@ -202,6 +202,7 @@ func newEventHandler(tb testing.TB, p string, l *rate.Limiter) *eventhandler.Han
 		URL:               loadgencfg.Config.ServerURL.String(),
 		Token:             loadgencfg.Config.SecretToken,
 		APIKey:            loadgencfg.Config.APIKey,
+		IgnoreErrors:      loadgencfg.Config.IgnoreErrors,
 		RewriteIDs:        loadgencfg.Config.RewriteIDs,
 		RewriteTimestamps: loadgencfg.Config.RewriteTimestamps,
 		Headers:           loadgencfg.Config.Headers,

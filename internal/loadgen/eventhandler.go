@@ -29,6 +29,7 @@ type EventHandlerParams struct {
 	APIKey                    string
 	Limiter                   *rate.Limiter
 	Rand                      *rand.Rand
+	IgnoreErrors              bool
 	RewriteIDs                bool
 	RewriteServiceNames       bool
 	RewriteServiceNodeNames   bool
@@ -56,6 +57,7 @@ func NewEventHandler(p EventHandlerParams) (*eventhandler.Handler, error) {
 		Storage:                   events,
 		Limiter:                   p.Limiter,
 		Rand:                      p.Rand,
+		IgnoreErrors:              p.IgnoreErrors,
 		RewriteIDs:                p.RewriteIDs,
 		RewriteServiceNames:       p.RewriteServiceNames,
 		RewriteServiceNodeNames:   p.RewriteServiceNodeNames,

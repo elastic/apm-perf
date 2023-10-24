@@ -95,6 +95,10 @@ type Config struct {
 	// it must not be invoked concurrently by any other goroutines.
 	Rand *rand.Rand
 
+	// IgnoreErrors when set to true ignores HTTP errors while sending
+	// events using the event handler.
+	IgnoreErrors bool
+
 	// RewriteTimestamps controls whether event timestamps are rewritten
 	// during replay.
 	//
@@ -342,7 +346,7 @@ func (h *Handler) sendBatch(
 		if err := s.w.Close(); err != nil {
 			return err
 		}
-		if err := h.config.Transport.SendV2Events(ctx, &s.w.buf); err != nil {
+		if err := h.config.Transport.SendV2Events(ctx, &s.w.buf, h.config.IgnoreErrors); err != nil {
 			return err
 		}
 		s.w.Reset()
