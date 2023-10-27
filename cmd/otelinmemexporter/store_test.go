@@ -2,7 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License 2.0;
 // you may not use this file except in compliance with the Elastic License 2.0.
 
-package inmemexporter
+package otelinmemexporter
 
 import (
 	"testing"
@@ -62,6 +62,28 @@ func TestNewStore(t *testing.T) {
 				},
 			},
 			errMsg: "cannot record same metric with different types",
+		},
+		{
+			name: "duplicate_keys",
+			cfgs: []AggregationConfig{
+				{
+					Name: "agg_cfg_1",
+					MatchLabelValues: map[string]string{
+						"k1": "v1",
+					},
+					Type: Sum,
+					Key:  "agg",
+				},
+				{
+					Name: "agg_cfg_2",
+					MatchLabelValues: map[string]string{
+						"k1": "v1",
+					},
+					Type: Last,
+					Key:  "agg",
+				},
+			},
+			errMsg: "key should be unique",
 		},
 		{
 			name: "valid",
@@ -207,7 +229,7 @@ func TestAdd(t *testing.T) {
 
 			store.Add(tt.input)
 			for i := 0; i < len(cfgs); i++ {
-				actual, err := store.Get(cfgs[i])
+				actual, err := store.Get(cfgs[i].Key)
 				assert.NoError(t, err)
 				assert.InDelta(t, tt.expected[i], actual, 1e-9)
 			}
@@ -268,6 +290,7 @@ func getTestAggCfg() ([]string, []AggregationConfig) {
 				"k_1": "v_1",
 			},
 			Type: Last,
+			Key:  "k1",
 		},
 		{
 			Name: "test_sum",
@@ -275,6 +298,7 @@ func getTestAggCfg() ([]string, []AggregationConfig) {
 				"k_1": "v_1",
 			},
 			Type: Sum,
+			Key:  "k2",
 		},
 		{
 			Name: "test_rate",
@@ -282,6 +306,7 @@ func getTestAggCfg() ([]string, []AggregationConfig) {
 				"k_1": "v_1",
 			},
 			Type: Rate,
+			Key:  "k3",
 		},
 	}
 

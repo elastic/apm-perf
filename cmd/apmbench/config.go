@@ -19,9 +19,8 @@ var cfg struct {
 	Benchtime time.Duration
 	RunRE     *regexp.Regexp
 	// Sorted list of agents count to be used for benchmarking
-	AgentsList          []int
-	CollectorConfigYaml string
-	ServerMode          bool
+	AgentsList                 []int
+	BenchmarkTelemetryEndpoint string
 }
 
 func init() {
@@ -58,6 +57,5 @@ func init() {
 			return nil
 		},
 	)
-	flag.StringVar(&cfg.CollectorConfigYaml, "collector-config-yaml", "", "configuration for otel collector")
-	flag.BoolVar(&cfg.ServerMode, "server-mode", false, "continue running otel collector post benchmark run")
+	flag.StringVar(&cfg.BenchmarkTelemetryEndpoint, "benchmark-telemetry-endpoint", "", "Telemetry endpoint that exposed benchmark telemetry data with reset capabilities")
 }
