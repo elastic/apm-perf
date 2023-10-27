@@ -20,23 +20,27 @@ func main() {
 		log.Fatalf("failed to setup logger: %v", err)
 	}
 
+	extraMetrics := func(b *testing.B) {}
+	resetStoreFunc := func() {}
+	if cfg.BenchmarkTelemetryEndpoint != "" {
+		telemetry := telemetry{endpoint: cfg.BenchmarkTelemetryEndpoint}
+		extraMetrics = func(b *testing.B) {
+			m, err := telemetry.GetAll()
+			if err != nil {
+				logger.Warn("failed to retrive benchmark metrics", zap.Error(err))
+				return
+			}
+			for unit, val := range m {
+				b.ReportMetric(val, unit)
+			}
+		}
+		resetStoreFunc = func() {
+			if err := telemetry.Reset(); err != nil {
+				logger.Warn("failed to reset store, benchmark report may be corrupted", zap.Error(err))
+			}
+		}
+	}
 	// Run benchmarks
-	telemetry := telemetry{endpoint: cfg.BenchmarkTelemetryEndpoint}
-	extraMetrics := func(b *testing.B) {
-		m, err := telemetry.GetAll()
-		if err != nil {
-			logger.Warn("failed to retrive benchmark metrics", zap.Error(err))
-			return
-		}
-		for unit, val := range m {
-			b.ReportMetric(val, unit)
-		}
-	}
-	resetStoreFunc := func() {
-		if err := telemetry.Reset(); err != nil {
-			logger.Warn("failed to reset store, benchmark report may be corrupted", zap.Error(err))
-		}
-	}
 	if err := Run(
 		extraMetrics,
 		resetStoreFunc,
