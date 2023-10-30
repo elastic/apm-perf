@@ -34,7 +34,7 @@ type result struct {
 
 // Run runs all the given BenchmarkFunc.
 func Run(
-	extraMetrics func(*testing.B) error,
+	extraMetrics func(*testing.B),
 	resetStore func(),
 	fns ...BenchmarkFunc,
 ) error {
@@ -77,7 +77,8 @@ func Run(
 		for _, b := range benchmarks {
 			name := fullBenchmarkName(b.name, agents)
 			for i := 0; i < int(cfg.Count); i++ {
-				result := runOne(extraMetrics, resetStore, b.fn)
+				resetStore() // reset the metric store before starting any benchmark
+				result := runOne(extraMetrics, b.fn)
 				// testing.Benchmark discards all output so the only thing we can
 				// retrive is the benchmark status and result.
 				if result.skipped {
@@ -103,11 +104,9 @@ func Run(
 }
 
 func runOne(
-	extraMetrics func(*testing.B) error,
-	resetStore func(),
+	extraMetrics func(*testing.B),
 	fn BenchmarkFunc,
 ) (result result) {
-	defer resetStore()
 	limiter := loadgen.GetNewLimiter(
 		loadgencfg.Config.EventRate.Burst,
 		loadgencfg.Config.EventRate.Interval,

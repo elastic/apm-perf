@@ -5,19 +5,11 @@
 package main
 
 import (
-	"context"
-	"errors"
 	"flag"
 	"log"
-	"os"
-	"os/signal"
-	"sync"
 	"testing"
-	"time"
 
 	"go.uber.org/zap"
-
-	"github.com/elastic/apm-perf/internal/otelcollector"
 )
 
 func main() {
@@ -28,61 +20,30 @@ func main() {
 		log.Fatalf("failed to setup logger: %v", err)
 	}
 
-	// Create otel collector
-	collectorCfg := otelcollector.DefaultConfig()
-	if cfg.CollectorConfigYaml != "" {
-		err := collectorCfg.LoadConfigFromYamlFile(cfg.CollectorConfigYaml)
-		if err != nil {
-			logger.Fatal("failed to load collector config", zap.Error(err))
-		}
-	}
-	collector, err := otelcollector.New(collectorCfg, logger)
-	if err != nil {
-		logger.Fatal("failed to create a new collector", zap.Error(err))
-	}
-	logger.Info("loaded collector configuration", zap.Object("config", &collectorCfg))
-
-	// Start otel collector
-	var wg sync.WaitGroup
-	defer wg.Wait()
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	wg.Add(1)
-	go func(ctx context.Context) {
-		defer wg.Done()
-
-		logger.Info("starting otel collector...")
-		if err := collector.Run(ctx); err != nil {
-			logger.Fatal("failed to run collector", zap.Error(err))
-		}
-	}(ctx)
-
-	// Wait for otel collector to be ready
-	ctx, cancel = context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	if err := collector.Wait(ctx); err != nil {
-		logger.Fatal("failed to start collector", zap.Error(err))
-	}
-
-	// Run benchmarks
-	extraMetrics := func(b *testing.B) error {
-		var errs []error
-		for _, cfg := range collectorCfg.InMemoryStoreConfig {
-			m, err := collector.GetAggregatedMetric(cfg)
+	extraMetrics := func(b *testing.B) {}
+	resetStoreFunc := func() {}
+	if cfg.BenchmarkTelemetryEndpoint != "" {
+		telemetry := telemetry{endpoint: cfg.BenchmarkTelemetryEndpoint}
+		extraMetrics = func(b *testing.B) {
+			m, err := telemetry.GetAll()
 			if err != nil {
-				errs = append(errs, err)
-				continue
+				logger.Warn("failed to retrive benchmark metrics", zap.Error(err))
+				return
 			}
-			b.ReportMetric(m, cfg.Alias)
+			for unit, val := range m {
+				b.ReportMetric(val, unit)
+			}
 		}
-		if len(errs) > 0 {
-			return errors.Join(errs...)
+		resetStoreFunc = func() {
+			if err := telemetry.Reset(); err != nil {
+				logger.Warn("failed to reset store, benchmark report may be corrupted", zap.Error(err))
+			}
 		}
-		return nil
 	}
+	// Run benchmarks
 	if err := Run(
 		extraMetrics,
-		collector.Reset,
+		resetStoreFunc,
 		Benchmark1000Transactions,
 		BenchmarkOTLPTraces,
 		BenchmarkAgentAll,
@@ -95,14 +56,6 @@ func main() {
 		logger.Fatal("failed to run benchmarks", zap.Error(err))
 	}
 	logger.Info("finished running benchmarks")
-
-	// If server-mode is enabled then keep the otel collector running
-	if cfg.ServerMode {
-		logger.Info("continuing to serve OTEL collector endpoints")
-		c := make(chan os.Signal, 1)
-		signal.Notify(c, os.Interrupt)
-		<-c
-	}
 }
 
 func init() {

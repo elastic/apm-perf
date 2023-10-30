@@ -2,15 +2,13 @@
 // or more contributor license agreements. Licensed under the Elastic License 2.0;
 // you may not use this file except in compliance with the Elastic License 2.0.
 
-package inmemexporter
+package otelinmemexporter
 
 import (
 	"fmt"
-	"sort"
 	"sync"
 	"time"
 
-	"go.elastic.co/fastjson"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.uber.org/zap"
@@ -33,10 +31,11 @@ const (
 // a specfic set of entries specified during creation.
 type Store struct {
 	sync.RWMutex
-	nums map[string]pmetric.NumberDataPoint
+	nameM map[string][]AggregationConfig // keys are metric names
+	keyM  map[string]*AggregationConfig
+	nums  map[string]pmetric.NumberDataPoint
 
-	aggCfgM map[string][]AggregationConfig // keys are metric names
-	logger  *zap.Logger
+	logger *zap.Logger
 }
 
 // AggregationConfig defines the configuration for filtering,
@@ -48,23 +47,24 @@ type Store struct {
 // values combination. If duplicate entries are provided an
 // error will be returned with the creation of a new store.
 type AggregationConfig struct {
+	// Key is used to describe the aggregated metrics produced by
+	// the specified aggregation config. Key must be unique across
+	// different aggregation configs.
+	Key string `mapstructure:"key"`
+
 	// Name specifies the metric name to include.
-	Name string `yaml:"name"`
+	Name string `mapstructure:"name"`
 
 	// MatchLabelValues specifies a subset of attributes that
 	// should match to aggregate a metric. All metrics with
 	// matching labels subset will be aggregated together.
-	MatchLabelValues map[string]string `yaml:"match_label_values"`
+	MatchLabelValues map[string]string `mapstructure:"match_label_values"`
 
 	// Type defines a type of aggregation that the store will
 	// perform on a filtered metric with the given name and
 	// label values. Only one type is allowed for a specific
 	// combination of name and label values.
-	Type AggregationType `yaml:"aggregation_type"`
-
-	// Alias is used to describe the aggregated metrics produced
-	// by the aggregation config.
-	Alias string `yaml:"alias"`
+	Type AggregationType `mapstructure:"aggregation_type"`
 }
 
 // MarshalLogObject implements zapcore.ObjectMarshaler to allow adding
@@ -72,7 +72,7 @@ type AggregationConfig struct {
 func (cfg *AggregationConfig) MarshalLogObject(enc zapcore.ObjectEncoder) error {
 	enc.AddString("name", cfg.Name)
 	enc.AddString("type", string(cfg.Type))
-	enc.AddString("alias", cfg.Alias)
+	enc.AddString("key", cfg.Key)
 	enc.AddObject("label_values", zapcore.ObjectMarshalerFunc(
 		func(enc zapcore.ObjectEncoder) error {
 			for l, v := range cfg.MatchLabelValues {
@@ -126,14 +126,12 @@ func (cfg *AggregationConfig) isEqual(
 // NewStore creates a new in memory metric store. Returns an
 // error if the provided config is invalid.
 func NewStore(aggs []AggregationConfig, logger *zap.Logger) (*Store, error) {
-	aggCfgM, err := validateAggregationConfig(aggs)
+	store, err := validateAggregationConfig(aggs)
 	if err != nil {
 		return nil, err
 	}
-	return &Store{
-		aggCfgM: aggCfgM,
-		logger:  logger,
-	}, nil
+	store.logger = logger
+	return store, nil
 }
 
 // Add adds metrics to the store.
@@ -155,28 +153,39 @@ func (s *Store) Add(ld pmetric.Metrics) {
 	}
 }
 
-// Get returns the aggregated value of a configured aggregation config.
-func (s *Store) Get(cfg AggregationConfig) (float64, error) {
-	var w fastjson.Writer
-	key := getHashKey(cfg, &w)
-
+// GetAll returns all the aggregated values for all the configured
+// aggregation configs.
+func (s *Store) GetAll() map[string]float64 {
 	s.RLock()
 	defer s.RUnlock()
+
+	m := make(map[string]float64, len(s.nums))
+	for key, cfg := range s.keyM {
+		dp, ok := s.nums[key]
+		if !ok {
+			m[key] = 0
+			continue
+		}
+		m[key] = getByType(cfg.Type, dp)
+	}
+	return m
+}
+
+// Get returns the aggregated value of a configured aggregation config.
+func (s *Store) Get(key string) (float64, error) {
+	s.RLock()
+	defer s.RUnlock()
+
+	cfg, ok := s.keyM[key]
+	if !ok {
+		return 0, fmt.Errorf("key %s is not configured", key)
+	}
 
 	dp, ok := s.nums[key]
 	if !ok {
 		return 0, nil
 	}
-	switch cfg.Type {
-	case Rate:
-		duration := time.Duration(dp.Timestamp() - dp.StartTimestamp()).Seconds()
-		if duration <= 0 {
-			return 0, nil
-		}
-		return dp.DoubleValue() / duration, nil
-	default:
-		return dp.DoubleValue(), nil
-	}
+	return getByType(cfg.Type, dp), nil
 }
 
 // Reset resets the store by deleting all cached data.
@@ -191,7 +200,7 @@ func (s *Store) Reset() {
 
 func (s *Store) add(m pmetric.Metric, resAttrs pcommon.Map) {
 	// Fast fail if metric name is not filtered
-	_, ok := s.aggCfgM[m.Name()]
+	_, ok := s.nameM[m.Name()]
 	if !ok {
 		s.logger.Debug(
 			"skipping metric, no config matched",
@@ -231,15 +240,13 @@ func (s *Store) mergeNumberDataPoints(
 		s.nums = make(map[string]pmetric.NumberDataPoint)
 	}
 
-	var w fastjson.Writer
 	for i := 0; i < from.Len(); i++ {
 		dp := from.At(i)
 		for _, cfg := range s.filterCfgs(name, dp.Attributes(), resAttrs) {
-			key := getHashKey(cfg, &w)
-			if _, ok := s.nums[key]; !ok {
-				s.nums[key] = pmetric.NewNumberDataPoint()
+			if _, ok := s.nums[cfg.Key]; !ok {
+				s.nums[cfg.Key] = pmetric.NewNumberDataPoint()
 			}
-			to := s.nums[key]
+			to := s.nums[cfg.Key]
 			switch cfg.Type {
 			case Last:
 				to.SetDoubleValue(doubleValue(dp))
@@ -274,7 +281,7 @@ func (s *Store) filterCfgs(
 	name string,
 	attrs, resAttrs pcommon.Map,
 ) []AggregationConfig {
-	cfgs, ok := s.aggCfgM[name]
+	cfgs, ok := s.nameM[name]
 	if !ok {
 		return nil
 	}
@@ -287,10 +294,28 @@ func (s *Store) filterCfgs(
 	return result
 }
 
-func validateAggregationConfig(src []AggregationConfig) (map[string][]AggregationConfig, error) {
-	to := make(map[string][]AggregationConfig)
-	for _, srcCfg := range src {
-		if toCfgs, ok := to[srcCfg.Name]; ok {
+func getByType(typ AggregationType, dp pmetric.NumberDataPoint) float64 {
+	switch typ {
+	case Rate:
+		if dp.DoubleValue() == 0 {
+			return 0
+		}
+		duration := time.Duration(dp.Timestamp() - dp.StartTimestamp()).Seconds()
+		if duration <= 0 {
+			return 0
+		}
+		return dp.DoubleValue() / duration
+	default:
+		return dp.DoubleValue()
+	}
+}
+
+func validateAggregationConfig(src []AggregationConfig) (*Store, error) {
+	nameM := make(map[string][]AggregationConfig)
+	keyM := make(map[string]*AggregationConfig)
+	for i := range src {
+		srcCfg := src[i]
+		if toCfgs, ok := nameM[srcCfg.Name]; ok {
 			for _, toCfg := range toCfgs {
 				if toCfg.isEqualIgnoringType(srcCfg) {
 					if toCfg.Type != srcCfg.Type {
@@ -300,33 +325,16 @@ func validateAggregationConfig(src []AggregationConfig) (map[string][]Aggregatio
 				}
 			}
 		}
-		to[srcCfg.Name] = append(to[srcCfg.Name], srcCfg)
+		if _, seen := keyM[srcCfg.Key]; seen {
+			return nil, fmt.Errorf("key should be unique, found duplicate: %s", srcCfg.Key)
+		}
+		nameM[srcCfg.Name] = append(nameM[srcCfg.Name], srcCfg)
+		keyM[srcCfg.Key] = &srcCfg
 	}
-	return to, nil
-}
-
-func getHashKey(aggCfg AggregationConfig, w *fastjson.Writer) string {
-	w.Reset()
-	w.RawByte('{')
-
-	w.RawString("\"n\":")
-	w.String(aggCfg.Name)
-
-	// TODO (lahsivjar): Can be optimized by caching sorted keys.
-	sortedKeys := make([]string, 0, len(aggCfg.MatchLabelValues))
-	for k := range aggCfg.MatchLabelValues {
-		sortedKeys = append(sortedKeys, k)
-	}
-	sort.Strings(sortedKeys)
-
-	for _, k := range sortedKeys {
-		w.RawByte(',')
-		w.String(k)
-		w.RawByte(':')
-		w.String(aggCfg.MatchLabelValues[k])
-	}
-	w.RawByte('}')
-	return string(w.Bytes())
+	return &Store{
+		nameM: nameM,
+		keyM:  keyM,
+	}, nil
 }
 
 func doubleValue(dp pmetric.NumberDataPoint) float64 {
