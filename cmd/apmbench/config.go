@@ -18,6 +18,7 @@ var cfg struct {
 	Count     uint
 	Benchtime time.Duration
 	RunRE     *regexp.Regexp
+	SkipRE    *regexp.Regexp
 	// Sorted list of agents count to be used for benchmarking
 	AgentsList                 []int
 	BenchmarkTelemetryEndpoint string
@@ -35,6 +36,16 @@ func init() {
 				return err
 			}
 			cfg.RunRE = re
+		}
+		return nil
+	})
+	flag.Func("skip", "skip benchmarks matching `regexp`", func(restr string) error {
+		if restr != "" {
+			re, err := regexp.Compile(restr)
+			if err != nil {
+				return err
+			}
+			cfg.SkipRE = re
 		}
 		return nil
 	})
