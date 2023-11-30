@@ -9,6 +9,7 @@ import (
 	"flag"
 	"fmt"
 	"reflect"
+	"regexp"
 	"runtime"
 	"strings"
 	"testing"
@@ -55,7 +56,7 @@ func Run(
 		if err != nil {
 			return err
 		}
-		if cfg.RunRE == nil || cfg.RunRE.MatchString(name) {
+		if shouldRun(name, cfg.RunRE, cfg.SkipRE) {
 			if len(name) > len(maxLenBenchName) {
 				maxLenBenchName = name
 			}
@@ -128,6 +129,20 @@ func runOne(
 		extraMetrics(b)
 	})
 	return result
+}
+
+func shouldRun(name string, runRE, skipRE *regexp.Regexp) bool {
+	if runRE == nil && skipRE == nil {
+		return true
+	}
+	// skip takes precedence over run
+	if skipRE != nil && skipRE.MatchString(name) {
+		return false
+	}
+	if runRE == nil || runRE.MatchString(name) {
+		return true
+	}
+	return false
 }
 
 func fullBenchmarkName(name string, agents int) string {
