@@ -85,7 +85,7 @@ func NewEventHandler(p EventHandlerParams) (*eventhandler.Handler, error) {
 	if err != nil {
 		return nil, err
 	}
-	transp := eventhandler.NewTransport(p.Logger, t.Client, p.URL, p.Token, p.APIKey, p.Headers)
+	transp := eventhandler.NewAPMTransport(p.Logger, t.Client, p.URL, p.Token, p.APIKey, p.Headers)
 	return eventhandler.New(p.Logger, eventhandler.Config{
 		Path:                      filepath.Join("events", p.Path),
 		Transport:                 transp,

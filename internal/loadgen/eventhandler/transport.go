@@ -21,8 +21,8 @@ type Transport struct {
 	intakeV2URL   string
 }
 
-// NewTransport initializes a new ReplayTransport.
-func NewTransport(logger *zap.Logger, c *http.Client, srvURL, token, apiKey string, headers map[string]string) *Transport {
+// NewAPMTransport initializes a new ReplayTransport.
+func NewAPMTransport(logger *zap.Logger, c *http.Client, srvURL, token, apiKey string, headers map[string]string) *Transport {
 	intakeHeaders := make(http.Header)
 	intakeHeaders.Set("Content-Encoding", "deflate")
 	intakeHeaders.Set("Content-Type", "application/x-ndjson")
