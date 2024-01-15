@@ -143,6 +143,22 @@ func getHandlerParams(runnerConfig *RunnerConfig, config ScenarioConfig) (loadge
 		return params, err
 	}
 
+	protocol := "apm/http"
+	if strings.HasPrefix(config.AgentName, "otlp-") {
+		protocol = "otlp/http"
+	}
+
+	datatype := "any"
+	if protocol == "otlp/http" {
+		if strings.HasPrefix(config.AgentName, "otlp-logs") {
+			datatype = "logs"
+		} else if strings.HasPrefix(config.AgentName, "otlp-metrics") {
+			datatype = "metrics"
+		} else if strings.HasPrefix(config.AgentName, "otlp-traces") {
+			datatype = "traces"
+		}
+	}
+
 	params = loadgen.EventHandlerParams{
 		Path:                      path,
 		URL:                       serverURL.String(),
@@ -158,6 +174,9 @@ func getHandlerParams(runnerConfig *RunnerConfig, config ScenarioConfig) (loadge
 		RewriteTransactionTypes:   config.RewriteTransactionTypes,
 		RewriteTimestamps:         true,
 		Headers:                   config.Headers,
+
+		Protocol: protocol,
+		Datatype: datatype,
 	}
 
 	return params, nil

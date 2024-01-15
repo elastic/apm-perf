@@ -46,6 +46,15 @@ type EventHandlerParams struct {
 	// Headers contains HTTP headers shipped with all requests.
 	// NOTE: these headers are not sanitized in logs.
 	Headers map[string]string
+
+	// One of: apm/http, otlp/http
+	// NOTE: otlp/grpc is not supported
+	Protocol string
+	// One of: any, logs, metrics, traces
+	// NOTE: for Protocol apm/http there is no difference
+	// between each value. When using Protocol otlp/http
+	// each data type requires a separate EventHandler.
+	Datatype string
 }
 
 func (e EventHandlerParams) MarshalLogObject(enc zapcore.ObjectEncoder) error {
@@ -79,13 +88,10 @@ func NewEventHandler(p EventHandlerParams) (*eventhandler.Handler, error) {
 	if p.Logger == nil {
 		return nil, fmt.Errorf("nil logger in params")
 	}
-	// We call the HTTPTransport constructor to avoid copying all the config
-	// parsing that creates the `*http.Client`.
-	t, err := transport.NewHTTPTransport(transport.HTTPTransportOptions{})
+	transp, err := getTransport(p)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("cannot create transport: %w", err)
 	}
-	transp := eventhandler.NewAPMTransport(p.Logger, t.Client, p.URL, p.Token, p.APIKey, p.Headers)
 	return eventhandler.New(p.Logger, eventhandler.Config{
 		Path:                      filepath.Join("events", p.Path),
 		Transport:                 transp,
@@ -102,4 +108,18 @@ func NewEventHandler(p EventHandlerParams) (*eventhandler.Handler, error) {
 		RewriteTransactionTypes:   p.RewriteTransactionTypes,
 		RewriteTimestamps:         p.RewriteTimestamps,
 	})
+}
+
+func getTransport(p EventHandlerParams) (eventhandler.Transport, error) {
+	// We call the HTTPTransport constructor to avoid copying all the config
+	// parsing that creates the `*http.Client`.
+	t, err := transport.NewHTTPTransport(transport.HTTPTransportOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("cannot create HTTP transport: %w", err)
+	}
+
+	// FIXME: check p.Protocol
+	// FIXME: check p.Datatype
+
+	return eventhandler.NewAPMTransport(p.Logger, t.Client, p.URL, p.Token, p.APIKey, p.Headers), nil
 }
