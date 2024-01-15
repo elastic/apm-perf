@@ -89,7 +89,7 @@ type Config struct {
 
 	// Transport holds the Transport that will be used for replaying
 	// event batches.
-	Transport *Transport
+	Transport Transport
 
 	// Rand, if non-nil, will be used for field randomization.
 	//
@@ -365,7 +365,7 @@ func (h *Handler) sendBatch(
 		}
 		h.logger.Debug("closed writer")
 
-		if err := h.config.Transport.SendV2Events(ctx, &s.w.buf, h.config.IgnoreErrors); err != nil {
+		if err := h.config.Transport.SendEvents(ctx, &s.w.buf, h.config.IgnoreErrors); err != nil {
 			return err
 		}
 		h.logger.Debug("sent events through transport")

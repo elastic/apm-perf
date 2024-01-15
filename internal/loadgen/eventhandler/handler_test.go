@@ -169,7 +169,7 @@ func TestHandlerNew(t *testing.T) {
 	t.Run("success-matches-files", func(t *testing.T) {
 		h, err := New(zap.NewNop(), Config{
 			Path:      `*.ndjson`,
-			Transport: &Transport{},
+			Transport: &APMTransport{},
 			Storage:   storage,
 		})
 		require.NoError(t, err)
@@ -178,7 +178,7 @@ func TestHandlerNew(t *testing.T) {
 	t.Run("failure-matches-no-files", func(t *testing.T) {
 		h, err := New(zap.NewNop(), Config{
 			Path:      `go*.ndjson`,
-			Transport: &Transport{},
+			Transport: &APMTransport{},
 			Storage:   storage,
 		})
 		require.EqualError(t, err, "eventhandler: glob matched no files, please specify a valid glob pattern")
@@ -187,7 +187,7 @@ func TestHandlerNew(t *testing.T) {
 	t.Run("failure-invalid-glob", func(t *testing.T) {
 		h, err := New(zap.NewNop(), Config{
 			Path:      "",
-			Transport: &Transport{},
+			Transport: &APMTransport{},
 			Storage:   storage,
 		})
 		require.EqualError(t, err, "eventhandler: glob matched no files, please specify a valid glob pattern")
@@ -197,7 +197,7 @@ func TestHandlerNew(t *testing.T) {
 		storage := os.DirFS(filepath.Join("testdata", "intake-v3"))
 		h, err := New(zap.NewNop(), Config{
 			Path:      `*.ndjson`,
-			Transport: &Transport{},
+			Transport: &APMTransport{},
 			Storage:   storage,
 		})
 		require.EqualError(t, err, "rum data support not implemented")
