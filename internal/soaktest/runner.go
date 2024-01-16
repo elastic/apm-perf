@@ -114,9 +114,13 @@ func runAgent(ctx context.Context, runner *Runner, config ScenarioConfig, rng *r
 }
 
 func getHandlerParams(runnerConfig *RunnerConfig, config ScenarioConfig) (loadgen.EventHandlerParams, error) {
-	// if AgentName is not specified, using all the agents,
+	// if AgentName is not specified, using all the APM agents,
 	// but shares the allowed events numbers sent for given duration(e.g. 4 agents send 10000/s in total)
+	if config.AgentName == "" {
+		config.AgentName = "apm-"
+	}
 	path := config.AgentName + "*.ndjson"
+
 	var params loadgen.EventHandlerParams
 	if config.Headers == nil {
 		config.Headers = make(map[string]string)
