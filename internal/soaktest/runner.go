@@ -119,7 +119,11 @@ func getHandlerParams(runnerConfig *RunnerConfig, config ScenarioConfig) (loadge
 	if config.AgentName == "" {
 		config.AgentName = "apm-"
 	}
-	path := config.AgentName + "*.ndjson"
+	extension := ".ndjson"
+	if strings.HasPrefix(config.AgentName, "otlp-") {
+		extension = ".jsonl"
+	}
+	path := config.AgentName + "*" + extension
 
 	var params loadgen.EventHandlerParams
 	if config.Headers == nil {
