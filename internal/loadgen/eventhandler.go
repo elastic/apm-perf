@@ -88,13 +88,33 @@ func NewEventHandler(p EventHandlerParams) (*eventhandler.Handler, error) {
 	if p.Logger == nil {
 		return nil, fmt.Errorf("nil logger in params")
 	}
-	transp, err := getTransport(p)
+	switch p.Protocol {
+	case "apm/http":
+		return newAPMEventHandler(p)
+	case "otlp/http":
+		// TODO: support OTLP event handling
+		// switch p.Datatype {
+		// case "logs":
+		// case "metrics":
+		// case "traces":
+		// }
+
+		return nil, fmt.Errorf("invalid datatype (%s) for protocol (%s)", p.Datatype, p.Protocol)
+	}
+
+	return nil, fmt.Errorf("invalid or unsupported protocol (%s)", p.Protocol)
+}
+
+func newAPMEventHandler(p EventHandlerParams) (*eventhandler.Handler, error) {
+	// We call the HTTPTransport constructor to avoid copying all the config
+	// parsing that creates the `*http.Client`.
+	t, err := transport.NewHTTPTransport(transport.HTTPTransportOptions{})
 	if err != nil {
-		return nil, fmt.Errorf("cannot create transport: %w", err)
+		return nil, fmt.Errorf("cannot create HTTP transport: %w", err)
 	}
 	return eventhandler.New(p.Logger, eventhandler.Config{
 		Path:                      filepath.Join("events", p.Path),
-		Transport:                 transp,
+		Transport:                 eventhandler.NewAPMTransport(p.Logger, t.Client, p.URL, p.Token, p.APIKey, p.Headers),
 		Storage:                   events,
 		Limiter:                   p.Limiter,
 		Rand:                      p.Rand,
@@ -108,18 +128,4 @@ func NewEventHandler(p EventHandlerParams) (*eventhandler.Handler, error) {
 		RewriteTransactionTypes:   p.RewriteTransactionTypes,
 		RewriteTimestamps:         p.RewriteTimestamps,
 	})
-}
-
-func getTransport(p EventHandlerParams) (eventhandler.Transport, error) {
-	// We call the HTTPTransport constructor to avoid copying all the config
-	// parsing that creates the `*http.Client`.
-	t, err := transport.NewHTTPTransport(transport.HTTPTransportOptions{})
-	if err != nil {
-		return nil, fmt.Errorf("cannot create HTTP transport: %w", err)
-	}
-
-	// FIXME: check p.Protocol
-	// FIXME: check p.Datatype
-
-	return eventhandler.NewAPMTransport(p.Logger, t.Client, p.URL, p.Token, p.APIKey, p.Headers), nil
 }
