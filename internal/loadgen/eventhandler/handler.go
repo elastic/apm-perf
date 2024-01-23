@@ -30,9 +30,7 @@ import (
 )
 
 var (
-	metaHeader    = []byte(`{"metadata":`)
-	rumMetaHeader = []byte(`{"m":`)
-	newlineBytes  = []byte("\n")
+	newlineBytes = []byte("\n")
 
 	// supportedTSFormats lists variations of RFC3339 for supporting
 	// different formats for the timezone offset. Copied from apm-data.
@@ -154,7 +152,7 @@ type Config struct {
 }
 
 // New creates a new Handler with config.
-func New(logger *zap.Logger, config Config) (*Handler, error) {
+func New(logger *zap.Logger, config Config, ec EventCollector) (*Handler, error) {
 	if config.Transport == nil {
 		return nil, errors.New("empty transport received")
 	}
@@ -207,46 +205,21 @@ func New(logger *zap.Logger, config Config) (*Handler, error) {
 			}
 
 			// TODO(marclop): Suppport RUM headers and handle them differently.
-			if bytes.HasPrefix(line, rumMetaHeader) {
-				return nil, errors.New("rum data support not implemented")
+			if err := ec.Filter(line); err != nil {
+				return nil, fmt.Errorf("line filter failed: %w", err)
 			}
 
 			// Copy the line, as it will be overwritten by the next scan.
 			linecopy := make([]byte, len(line))
 			copy(linecopy, line)
 			// if the line is meta, create a new batch
-			if isMeta := bytes.HasPrefix(line, metaHeader); isMeta {
+			if ec.IsMeta(line) {
 				h.batches = append(h.batches, batch{
 					metadata: linecopy,
 				})
 				current = &h.batches[len(h.batches)-1]
 			} else {
-				event := event{payload: linecopy}
-				result := gjson.ParseBytes(linecopy)
-				result.ForEach(func(key, value gjson.Result) bool {
-					event.objectType = key.Str // lines look like {"span":{...}}
-					timestampResult := value.Get("timestamp")
-					if timestampResult.Exists() {
-						switch timestampResult.Type {
-						case gjson.Number:
-							us := timestampResult.Int()
-							if us >= 0 {
-								s := us / 1000000
-								ns := (us - (s * 1000000)) * 1000
-								event.timestamp = time.Unix(s, ns)
-							}
-						case gjson.String:
-							tstr := timestampResult.Str
-							for _, f := range supportedTSFormats {
-								if t, err := time.Parse(f, tstr); err == nil {
-									event.timestamp = t
-									break
-								}
-							}
-						}
-					}
-					return false
-				})
+				event := ec.Process(linecopy)
 				if !event.timestamp.IsZero() {
 					if h.minTimestamp.IsZero() || event.timestamp.Before(h.minTimestamp) {
 						h.minTimestamp = event.timestamp

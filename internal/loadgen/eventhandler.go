@@ -127,5 +127,5 @@ func newAPMEventHandler(p EventHandlerParams) (*eventhandler.Handler, error) {
 		RewriteTransactionNames:   p.RewriteTransactionNames,
 		RewriteTransactionTypes:   p.RewriteTransactionTypes,
 		RewriteTimestamps:         p.RewriteTimestamps,
-	})
+	}, &eventhandler.APMEventCollector{})
 }
