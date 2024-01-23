@@ -100,6 +100,9 @@ type Config struct {
 	// events using the event handler.
 	IgnoreErrors bool
 
+	// Writer writes replayable events to buffer.
+	Writer EventWriter
+
 	// RewriteTimestamps controls whether event timestamps are rewritten
 	// during replay.
 	//
@@ -166,6 +169,9 @@ func New(logger *zap.Logger, config Config, ec EventCollector) (*Handler, error)
 			return nil, fmt.Errorf("failed to generate seed for math/rand: %w", err)
 		}
 		config.Rand = rand.New(rand.NewSource(rngseed))
+	}
+	if config.Writer == nil {
+		return nil, errors.New("empty writer received")
 	}
 
 	h := Handler{
@@ -325,10 +331,11 @@ func (h *Handler) sendBatch(
 				n = capacity
 			}
 		}
-		if err := h.writeEvents(s.w, batch{
-			metadata: b.metadata,
-			events:   events[:n],
-		}, baseTimestamp, randomBits); err != nil {
+		if err := h.config.Writer(h.config, h.minTimestamp,
+			s.w, batch{
+				metadata: b.metadata,
+				events:   events[:n],
+			}, baseTimestamp, randomBits); err != nil {
 			return err
 		}
 		h.logger.Debug("wrote events to buffer")
@@ -346,132 +353,6 @@ func (h *Handler) sendBatch(
 		s.w.Reset()
 		s.sent += n
 		events = events[n:]
-	}
-	return nil
-}
-
-func (h *Handler) writeEvents(w *pooledWriter, b batch, baseTimestamp time.Time, randomBits uint64) error {
-	rewriteAny := h.config.RewriteTimestamps ||
-		h.config.RewriteIDs ||
-		h.config.RewriteServiceNames ||
-		h.config.RewriteServiceNodeNames ||
-		h.config.RewriteServiceTargetNames ||
-		h.config.RewriteSpanNames ||
-		h.config.RewriteTransactionNames ||
-		h.config.RewriteTransactionTypes
-
-	var err error
-	metadata := b.metadata
-	if h.config.RewriteServiceNames {
-		metadata, err = randomizeASCIIField(metadata, "metadata.service.name", randomBits, &w.idBuf)
-		if err != nil {
-			return fmt.Errorf("failed to rewrite `service.name`: %w", err)
-		}
-	}
-	if h.config.RewriteServiceNodeNames {
-		// The intakev2 field name is `service.node.configured_name`,
-		// this is translated to `service.node.name` in the ES documents.
-		metadata, err = randomizeASCIIField(metadata, "metadata.service.node.configured_name", randomBits, &w.idBuf)
-		if err != nil {
-			return fmt.Errorf("failed to rewrite `service.node.name`: %w", err)
-		}
-	}
-	w.Write(metadata)
-	w.Write(newlineBytes)
-
-	for _, event := range b.events {
-		if !rewriteAny {
-			w.Write(event.payload)
-			w.Write(newlineBytes)
-			continue
-		}
-		w.rewriteBuf.RawByte('{')
-		w.rewriteBuf.String(event.objectType)
-		w.rewriteBuf.RawString(":")
-		rewriteJSONObject(w, gjson.GetBytes(event.payload, event.objectType), func(key, value gjson.Result) bool {
-			switch key.Str {
-			case "timestamp":
-				if h.config.RewriteTimestamps && !event.timestamp.IsZero() {
-					// We always encode rewritten timestamps as strings,
-					// so we don't lose any precision when offsetting by
-					// either the base timestamp, or the minimum timestamp
-					// across all the batches; string-formatted timestamps
-					// may have nanosecond precision.
-					offset := event.timestamp.Sub(h.minTimestamp)
-					timestamp := baseTimestamp.Add(offset)
-					w.rewriteBuf.RawByte('"')
-					w.rewriteBuf.Time(timestamp, time.RFC3339Nano)
-					w.rewriteBuf.RawByte('"')
-				} else {
-					w.rewriteBuf.RawString(value.Raw)
-				}
-			case "id", "parent_id", "trace_id", "transaction_id":
-				if h.config.RewriteIDs && randomizeTraceID(&w.idBuf, value.Str, randomBits) {
-					w.rewriteBuf.RawByte('"')
-					w.rewriteBuf.RawBytes(w.idBuf.Bytes())
-					w.rewriteBuf.RawByte('"')
-					w.idBuf.Reset()
-				} else {
-					w.rewriteBuf.RawString(value.Raw)
-				}
-			case "name":
-				randomizeASCII(&w.idBuf, value.Str, randomBits)
-				switch {
-				case h.config.RewriteSpanNames && event.objectType == "span":
-					w.rewriteBuf.String(w.idBuf.String())
-				case h.config.RewriteTransactionNames && event.objectType == "transaction":
-					w.rewriteBuf.String(w.idBuf.String())
-				default:
-					w.rewriteBuf.RawString(value.Raw)
-				}
-				w.idBuf.Reset()
-			case "type":
-				switch {
-				case h.config.RewriteTransactionTypes && event.objectType == "transaction":
-					randomizeASCII(&w.idBuf, value.Str, randomBits)
-					w.rewriteBuf.String(w.idBuf.String())
-					w.idBuf.Reset()
-				default:
-					w.rewriteBuf.RawString(value.Raw)
-				}
-			case "context":
-				if !h.config.RewriteServiceTargetNames {
-					w.rewriteBuf.RawString(value.Raw)
-					break
-				}
-				rewriteJSONObject(w, value, func(key, value gjson.Result) bool {
-					if key.Str != "service" {
-						w.rewriteBuf.RawString(value.Raw)
-						return true
-					}
-					rewriteJSONObject(w, value, func(key, value gjson.Result) bool {
-						if key.Str != "target" {
-							w.rewriteBuf.RawString(value.Raw)
-							return true
-						}
-						rewriteJSONObject(w, value, func(key, value gjson.Result) bool {
-							if key.Str != "name" {
-								w.rewriteBuf.RawString(value.Raw)
-								return true
-							}
-							randomizeASCII(&w.idBuf, value.Str, randomBits)
-							w.rewriteBuf.String(w.idBuf.String())
-							w.idBuf.Reset()
-							return true
-						})
-						return true
-					})
-					return true
-				})
-			default:
-				w.rewriteBuf.RawString(value.Raw)
-			}
-			return true
-		})
-		w.rewriteBuf.RawString("}")
-		w.Write(w.rewriteBuf.Bytes())
-		w.Write(newlineBytes)
-		w.rewriteBuf.Reset()
 	}
 	return nil
 }

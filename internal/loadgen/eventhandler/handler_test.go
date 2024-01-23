@@ -86,6 +86,7 @@ func newHandler(tb testing.TB, opts ...newHandlerOption) (*Handler, *mockServer)
 		Transport: transp,
 		Storage:   os.DirFS("testdata"),
 		Limiter:   rate.NewLimiter(rate.Inf, 0),
+		Writer:    writeAPMEvents,
 	}
 	for _, opt := range opts {
 		opt(&config)
@@ -171,6 +172,7 @@ func TestHandlerNew(t *testing.T) {
 			Path:      `*.ndjson`,
 			Transport: &APMTransport{},
 			Storage:   storage,
+			Writer:    writeAPMEvents,
 		}, &APMEventCollector{})
 		require.NoError(t, err)
 		assert.Greater(t, len(h.batches), 0)
@@ -180,6 +182,7 @@ func TestHandlerNew(t *testing.T) {
 			Path:      `go*.ndjson`,
 			Transport: &APMTransport{},
 			Storage:   storage,
+			Writer:    writeAPMEvents,
 		}, &APMEventCollector{})
 		require.EqualError(t, err, "eventhandler: glob matched no files, please specify a valid glob pattern")
 		assert.Nil(t, h)
@@ -189,6 +192,7 @@ func TestHandlerNew(t *testing.T) {
 			Path:      "",
 			Transport: &APMTransport{},
 			Storage:   storage,
+			Writer:    writeAPMEvents,
 		}, &APMEventCollector{})
 		require.EqualError(t, err, "eventhandler: glob matched no files, please specify a valid glob pattern")
 		assert.Nil(t, h)
@@ -199,6 +203,7 @@ func TestHandlerNew(t *testing.T) {
 			Path:      `*.ndjson`,
 			Transport: &APMTransport{},
 			Storage:   storage,
+			Writer:    writeAPMEvents,
 		}, &APMEventCollector{})
 		require.EqualError(t, err, "line filter failed: rum data support not implemented")
 		assert.Nil(t, h)

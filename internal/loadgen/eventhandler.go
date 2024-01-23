@@ -112,7 +112,8 @@ func newAPMEventHandler(p EventHandlerParams) (*eventhandler.Handler, error) {
 	if err != nil {
 		return nil, fmt.Errorf("cannot create HTTP transport: %w", err)
 	}
-	return eventhandler.New(p.Logger, eventhandler.Config{
+
+	c := eventhandler.Config{
 		Path:                      filepath.Join("events", p.Path),
 		Transport:                 eventhandler.NewAPMTransport(p.Logger, t.Client, p.URL, p.Token, p.APIKey, p.Headers),
 		Storage:                   events,
@@ -127,5 +128,7 @@ func newAPMEventHandler(p EventHandlerParams) (*eventhandler.Handler, error) {
 		RewriteTransactionNames:   p.RewriteTransactionNames,
 		RewriteTransactionTypes:   p.RewriteTransactionTypes,
 		RewriteTimestamps:         p.RewriteTimestamps,
-	}, &eventhandler.APMEventCollector{})
+	}
+
+	return eventhandler.NewAPM(p.Logger, c)
 }

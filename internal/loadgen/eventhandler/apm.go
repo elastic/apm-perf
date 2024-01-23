@@ -13,6 +13,11 @@ import (
 	"go.uber.org/zap"
 )
 
+func NewAPM(logger *zap.Logger, config Config) (*Handler, error) {
+	config.Writer = writeAPMEvents
+	return New(logger, config, &APMEventCollector{})
+}
+
 // APMTransport sends the contents of a reader to a remote APMTransport Server.
 type APMTransport struct {
 	logger        *zap.Logger
