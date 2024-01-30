@@ -86,7 +86,7 @@ func (runner *Runner) Run(ctx context.Context) error {
 			runner.logger.Debug(fmt.Sprintf("agent: %s, replica %d", config.AgentName, i))
 			g.Go(func() error {
 				rng := rand.New(rand.NewSource(rngseed))
-				return runAgent(gCtx, runner.config, config, rng)
+				return runAgent(gCtx, runner, config, rng)
 			})
 		}
 	}
@@ -94,16 +94,20 @@ func (runner *Runner) Run(ctx context.Context) error {
 	return g.Wait()
 }
 
-func runAgent(ctx context.Context, runnerConfig *RunnerConfig, config ScenarioConfig, rng *rand.Rand) error {
-	params, err := getHandlerParams(runnerConfig, config)
+func runAgent(ctx context.Context, runner *Runner, config ScenarioConfig, rng *rand.Rand) error {
+	params, err := getHandlerParams(runner.config, config)
 	if err != nil {
 		return err
 	}
 	params.Rand = rng
+	runner.logger.Debug("computed load generation parameters", zap.Object("params", params))
+
 	handler, err := loadgen.NewEventHandler(params)
 	if err != nil {
 		return err
 	}
+
+	runner.logger.Debug("created event handler")
 
 	return handler.SendBatchesInLoop(ctx)
 }

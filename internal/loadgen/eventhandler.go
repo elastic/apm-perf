@@ -10,6 +10,7 @@ import (
 	"math/rand"
 	"path/filepath"
 
+	"go.uber.org/zap/zapcore"
 	"golang.org/x/time/rate"
 
 	"github.com/elastic/apm-perf/internal/loadgen/eventhandler"
@@ -38,7 +39,34 @@ type EventHandlerParams struct {
 	RewriteTransactionNames   bool
 	RewriteTransactionTypes   bool
 	RewriteTimestamps         bool
-	Headers                   map[string]string
+	// Headers contains HTTP headers shipped with all requests.
+	// NOTE: these headers are not sanitized in logs.
+	Headers map[string]string
+}
+
+func (e EventHandlerParams) MarshalLogObject(enc zapcore.ObjectEncoder) error {
+	// NOTE: Logger is ignored.
+	enc.AddString("path", e.Path)
+	enc.AddString("url", e.URL)
+	enc.AddString("token", "REDACTED")
+	enc.AddString("api_key", "REDACTED")
+	// FIXME: add Limiter.
+	// FIXME: add Rand.
+	enc.AddBool("ignore_errors", e.IgnoreErrors)
+	enc.AddBool("rewrite_ids", e.RewriteIDs)
+	enc.AddBool("rewrite_service_names", e.RewriteServiceNames)
+	enc.AddBool("rewrite_ids", e.RewriteServiceNodeNames)
+	enc.AddBool("rewrite_ids", e.RewriteServiceTargetNames)
+	enc.AddBool("rewrite_ids", e.RewriteSpanNames)
+	enc.AddBool("rewrite_ids", e.RewriteTransactionNames)
+	enc.AddBool("rewrite_ids", e.RewriteTransactionTypes)
+	enc.AddBool("rewrite_ids", e.RewriteTimestamps)
+
+	for k, v := range e.Headers {
+		enc.AddString(k, v)
+	}
+
+	return nil
 }
 
 // NewEventHandler creates a eventhandler which loads the files matching the
