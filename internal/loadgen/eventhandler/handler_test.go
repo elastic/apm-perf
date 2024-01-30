@@ -79,7 +79,7 @@ func newHandler(tb testing.TB, opts ...newHandlerOption) (*Handler, *mockServer)
 	ms := &mockServer{got: &bytes.Buffer{}}
 	srv := httptest.NewServer(ms)
 	ms.close = srv.Close
-	transp := NewTransport(srv.Client(), srv.URL, "", "", nil)
+	transp := NewTransport(zap.NewNop(), srv.Client(), srv.URL, "", "", nil)
 
 	config := Config{
 		Path:      "*.ndjson",

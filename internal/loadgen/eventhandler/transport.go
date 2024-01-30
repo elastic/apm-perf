@@ -9,17 +9,20 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+
+	"go.uber.org/zap"
 )
 
 // Transport sends the contents of a reader to a remote APM Server.
 type Transport struct {
+	logger        *zap.Logger
 	client        *http.Client
 	intakeHeaders http.Header
 	intakeV2URL   string
 }
 
 // NewTransport initializes a new ReplayTransport.
-func NewTransport(c *http.Client, srvURL, token, apiKey string, headers map[string]string) *Transport {
+func NewTransport(logger *zap.Logger, c *http.Client, srvURL, token, apiKey string, headers map[string]string) *Transport {
 	intakeHeaders := make(http.Header)
 	intakeHeaders.Set("Content-Encoding", "deflate")
 	intakeHeaders.Set("Content-Type", "application/x-ndjson")
@@ -29,6 +32,7 @@ func NewTransport(c *http.Client, srvURL, token, apiKey string, headers map[stri
 		intakeHeaders.Set(name, header)
 	}
 	return &Transport{
+		logger:        logger.Named("transport"),
 		client:        c,
 		intakeV2URL:   srvURL + `/intake/v2/events`,
 		intakeHeaders: intakeHeaders,
