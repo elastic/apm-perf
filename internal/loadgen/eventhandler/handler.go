@@ -171,7 +171,7 @@ func New(logger *zap.Logger, config Config) (*Handler, error) {
 	}
 
 	h := Handler{
-		logger: logger,
+		logger: logger.Named("handler"),
 		config: config,
 		writerPool: sync.Pool{
 			New: func() any {
