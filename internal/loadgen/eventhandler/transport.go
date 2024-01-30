@@ -53,11 +53,23 @@ func (t *Transport) SendV2Events(ctx context.Context, r io.Reader, ignoreErrs bo
 }
 
 func (t *Transport) sendEvents(req *http.Request, r io.Reader, ignoreErrs bool) error {
+	t.logger.Debug("sending request")
 	res, err := t.client.Do(req)
 	if err != nil {
-		return err
+		return fmt.Errorf("cannot complete request: %w", err)
 	}
 	defer res.Body.Close()
+
+	body := ""
+
+	if res.Body != nil {
+		if b, err := io.ReadAll(res.Body); err != nil {
+			return fmt.Errorf("cannot read body: %w", err)
+		} else {
+			body = string(b)
+		}
+	}
+	t.logger.Debug("request failed", zap.Int("status_code", res.StatusCode), zap.String("response", body))
 
 	if !ignoreErrs {
 		switch res.StatusCode / 100 {
