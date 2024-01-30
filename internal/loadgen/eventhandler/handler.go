@@ -17,6 +17,7 @@ import (
 	"io/fs"
 	"math/bits"
 	"math/rand"
+	"strings"
 	"sync"
 	"time"
 
@@ -177,7 +178,7 @@ func New(logger *zap.Logger, config Config) (*Handler, error) {
 				pw := &pooledWriter{}
 				zw, err := zlib.NewWriterLevel(&pw.buf, zlib.BestSpeed)
 				if err != nil {
-					panic(err)
+					logger.Panic(err.Error())
 				}
 				pw.Writer = zw
 				return pw
@@ -189,6 +190,8 @@ func New(logger *zap.Logger, config Config) (*Handler, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	logger.Debug("file matching pattern found for batch extraction", zap.String("matches", strings.Join(matches, ",")))
 	for _, path := range matches {
 		f, err := config.Storage.Open(path)
 		if err != nil {
@@ -256,6 +259,8 @@ func New(logger *zap.Logger, config Config) (*Handler, error) {
 	if len(h.batches) == 0 {
 		return nil, errors.New("eventhandler: glob matched no files, please specify a valid glob pattern")
 	}
+
+	logger.Debug("collected batches", zap.Int("size", len(h.batches)))
 	return &h, nil
 }
 
@@ -300,12 +305,15 @@ func (h *Handler) sendBatches(ctx context.Context, s *state) (int, error) {
 	h.mu.Lock()
 	randomBits := h.config.Rand.Uint64()
 	h.mu.Unlock()
+	h.logger.Debug("got random bits for batch")
 
 	s.w = h.writerPool.Get().(*pooledWriter)
 	defer h.writerPool.Put(s.w)
 	defer s.w.Reset()
+	h.logger.Debug("got writer from pool")
 
 	baseTimestamp := time.Now().UTC()
+	h.logger.Debug("calculated base timestamp", zap.String("timestamp", baseTimestamp.String()))
 	for _, batch := range h.batches {
 		if err := h.sendBatch(ctx, s, batch, baseTimestamp, randomBits); err != nil {
 			return s.sent, err
@@ -322,6 +330,8 @@ func (h *Handler) sendBatch(
 	randomBits uint64,
 ) error {
 	events := b.events
+	h.logger.Debug("sending events in burst", zap.Int("size", len(events)))
+
 	for len(events) > 0 {
 		n := len(events)
 		if s.burst > 0 {
@@ -336,6 +346,8 @@ func (h *Handler) sendBatch(
 			// burst size minus however many events have been sent for
 			// this iteration.
 			capacity := s.burst - mod
+			h.logger.Debug("calculated capacity", zap.Int("value", capacity))
+
 			if n > capacity {
 				n = capacity
 			}
@@ -346,12 +358,18 @@ func (h *Handler) sendBatch(
 		}, baseTimestamp, randomBits); err != nil {
 			return err
 		}
+		h.logger.Debug("wrote events to buffer")
+
 		if err := s.w.Close(); err != nil {
 			return err
 		}
+		h.logger.Debug("closed writer")
+
 		if err := h.config.Transport.SendV2Events(ctx, &s.w.buf, h.config.IgnoreErrors); err != nil {
 			return err
 		}
+		h.logger.Debug("sent events through transport")
+
 		s.w.Reset()
 		s.sent += n
 		events = events[n:]
