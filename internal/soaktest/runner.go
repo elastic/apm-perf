@@ -102,6 +102,7 @@ func runAgent(ctx context.Context, runner *Runner, config ScenarioConfig, rng *r
 	params.Rand = rng
 	runner.logger.Debug("computed load generation parameters", zap.Object("params", params))
 
+	params.Logger = runner.logger
 	handler, err := loadgen.NewEventHandler(params)
 	if err != nil {
 		return err
