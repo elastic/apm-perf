@@ -10,6 +10,7 @@ import (
 	"math/rand"
 	"path/filepath"
 
+	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"golang.org/x/time/rate"
 
@@ -24,6 +25,8 @@ import (
 var events embed.FS
 
 type EventHandlerParams struct {
+	Logger *zap.Logger
+
 	Path                      string
 	URL                       string
 	Token                     string
@@ -79,7 +82,7 @@ func NewEventHandler(p EventHandlerParams) (*eventhandler.Handler, error) {
 		return nil, err
 	}
 	transp := eventhandler.NewTransport(t.Client, p.URL, p.Token, p.APIKey, p.Headers)
-	return eventhandler.New(eventhandler.Config{
+	return eventhandler.New(p.Logger, eventhandler.Config{
 		Path:                      filepath.Join("events", p.Path),
 		Transport:                 transp,
 		Storage:                   events,

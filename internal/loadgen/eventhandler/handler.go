@@ -24,6 +24,7 @@ import (
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
 	"go.elastic.co/fastjson"
+	"go.uber.org/zap"
 	"golang.org/x/time/rate"
 )
 
@@ -59,6 +60,7 @@ type Handler struct {
 	mu         sync.Mutex // guards config.Rand
 	config     Config
 	writerPool sync.Pool
+	logger     *zap.Logger
 
 	batches      []batch
 	minTimestamp time.Time // across all batches
@@ -151,7 +153,7 @@ type Config struct {
 }
 
 // New creates a new Handler with config.
-func New(config Config) (*Handler, error) {
+func New(logger *zap.Logger, config Config) (*Handler, error) {
 	if config.Transport == nil {
 		return nil, errors.New("empty transport received")
 	}
@@ -168,6 +170,7 @@ func New(config Config) (*Handler, error) {
 	}
 
 	h := Handler{
+		logger: logger,
 		config: config,
 		writerPool: sync.Pool{
 			New: func() any {
