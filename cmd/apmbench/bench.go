@@ -15,6 +15,7 @@ import (
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.uber.org/zap"
 	"golang.org/x/time/rate"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -197,6 +198,7 @@ func newOTLPExporter(tb testing.TB) *otlptrace.Exporter {
 
 func newEventHandler(tb testing.TB, p string, l *rate.Limiter) *eventhandler.Handler {
 	h, err := loadgen.NewEventHandler(loadgen.EventHandlerParams{
+		Logger:            zap.NewNop(),
 		Path:              p,
 		Limiter:           l,
 		URL:               loadgencfg.Config.ServerURL.String(),
