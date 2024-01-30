@@ -58,12 +58,12 @@ func (e EventHandlerParams) MarshalLogObject(enc zapcore.ObjectEncoder) error {
 	enc.AddBool("ignore_errors", e.IgnoreErrors)
 	enc.AddBool("rewrite_ids", e.RewriteIDs)
 	enc.AddBool("rewrite_service_names", e.RewriteServiceNames)
-	enc.AddBool("rewrite_ids", e.RewriteServiceNodeNames)
-	enc.AddBool("rewrite_ids", e.RewriteServiceTargetNames)
-	enc.AddBool("rewrite_ids", e.RewriteSpanNames)
-	enc.AddBool("rewrite_ids", e.RewriteTransactionNames)
-	enc.AddBool("rewrite_ids", e.RewriteTransactionTypes)
-	enc.AddBool("rewrite_ids", e.RewriteTimestamps)
+	enc.AddBool("rewrite_service_node_names", e.RewriteServiceNodeNames)
+	enc.AddBool("rewrite_service_target_names", e.RewriteServiceTargetNames)
+	enc.AddBool("rewrite_span_names", e.RewriteSpanNames)
+	enc.AddBool("rewrite_transaction_names", e.RewriteTransactionNames)
+	enc.AddBool("rewrite_transaction_tpes", e.RewriteTransactionTypes)
+	enc.AddBool("rewrite_timestamps", e.RewriteTimestamps)
 
 	for k, v := range e.Headers {
 		enc.AddString(k, v)
