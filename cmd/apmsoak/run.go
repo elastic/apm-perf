@@ -24,6 +24,7 @@ type RunOptions struct {
 	SecretToken   string
 	APIKeys       string
 	BypassProxy   bool
+	Loglevel      string
 }
 
 func (opts *RunOptions) toRunnerConfig() (*soaktest.RunnerConfig, error) {
@@ -54,9 +55,7 @@ func NewCmdRun() *cobra.Command {
 		Use:   "run",
 		Short: "Run apmsoak",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			encoderConfig := ecszap.NewDefaultEncoderConfig()
-			core := ecszap.NewCore(encoderConfig, os.Stdout, zap.InfoLevel)
-			logger := zap.New(core, zap.AddCaller())
+			logger := getLogger(options.Loglevel)
 
 			config, err := options.toRunnerConfig()
 			if err != nil {
@@ -82,5 +81,24 @@ func NewCmdRun() *cobra.Command {
 	cmd.Flags().StringVar(&options.SecretToken, "secret-token", "", "Secret token for APM Server. Managed intake service doesn't support secret token")
 	cmd.Flags().StringVar(&options.APIKeys, "api-keys", "", "API keys for managed service. Specify key value pairs as `project_id_1:my_api_key,project_id_2:my_key`")
 	cmd.Flags().BoolVar(&options.BypassProxy, "bypass-proxy", false, "Detach from proxy dependency and provide projectID via header. Useful when testing locally")
+	cmd.Flags().StringVar(&options.Loglevel, "log-level", "info", "Specify the log level to use when running this command. Supported values: debug, info, warn, error")
 	return cmd
+}
+
+func getLogger(logLevel string) *zap.Logger {
+	encoderConfig := ecszap.NewDefaultEncoderConfig()
+
+	level := zap.InfoLevel
+	switch logLevel {
+	case "debug":
+		level = zap.DebugLevel
+	case "warn":
+		level = zap.WarnLevel
+	case "error":
+		level = zap.ErrorLevel
+	}
+
+	core := ecszap.NewCore(encoderConfig, os.Stdout, level)
+	logger := zap.New(core, zap.AddCaller())
+	return logger
 }
