@@ -7,6 +7,7 @@ package loadgen
 
 import (
 	"embed"
+	"fmt"
 	"math/rand"
 	"path/filepath"
 
@@ -75,6 +76,9 @@ func (e EventHandlerParams) MarshalLogObject(enc zapcore.ObjectEncoder) error {
 // NewEventHandler creates a eventhandler which loads the files matching the
 // passed regex.
 func NewEventHandler(p EventHandlerParams) (*eventhandler.Handler, error) {
+	if p.Logger == nil {
+		return nil, fmt.Errorf("nil logger in params")
+	}
 	// We call the HTTPTransport constructor to avoid copying all the config
 	// parsing that creates the `*http.Client`.
 	t, err := transport.NewHTTPTransport(transport.HTTPTransportOptions{})
