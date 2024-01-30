@@ -10,6 +10,8 @@ import (
 	"math/rand"
 	"path/filepath"
 
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 	"golang.org/x/time/rate"
 
 	"github.com/elastic/apm-perf/internal/loadgen/eventhandler"
@@ -23,6 +25,8 @@ import (
 var events embed.FS
 
 type EventHandlerParams struct {
+	Logger *zap.Logger
+
 	Path                      string
 	URL                       string
 	Token                     string
@@ -38,7 +42,34 @@ type EventHandlerParams struct {
 	RewriteTransactionNames   bool
 	RewriteTransactionTypes   bool
 	RewriteTimestamps         bool
-	Headers                   map[string]string
+	// Headers contains HTTP headers shipped with all requests.
+	// NOTE: these headers are not sanitized in logs.
+	Headers map[string]string
+}
+
+func (e EventHandlerParams) MarshalLogObject(enc zapcore.ObjectEncoder) error {
+	// NOTE: Logger is ignored.
+	enc.AddString("path", e.Path)
+	enc.AddString("url", e.URL)
+	enc.AddString("token", "REDACTED")
+	enc.AddString("api_key", "REDACTED")
+	// FIXME: add Limiter.
+	// FIXME: add Rand.
+	enc.AddBool("ignore_errors", e.IgnoreErrors)
+	enc.AddBool("rewrite_ids", e.RewriteIDs)
+	enc.AddBool("rewrite_service_names", e.RewriteServiceNames)
+	enc.AddBool("rewrite_service_node_names", e.RewriteServiceNodeNames)
+	enc.AddBool("rewrite_service_target_names", e.RewriteServiceTargetNames)
+	enc.AddBool("rewrite_span_names", e.RewriteSpanNames)
+	enc.AddBool("rewrite_transaction_names", e.RewriteTransactionNames)
+	enc.AddBool("rewrite_transaction_tpes", e.RewriteTransactionTypes)
+	enc.AddBool("rewrite_timestamps", e.RewriteTimestamps)
+
+	for k, v := range e.Headers {
+		enc.AddString(k, v)
+	}
+
+	return nil
 }
 
 // NewEventHandler creates a eventhandler which loads the files matching the
@@ -50,8 +81,8 @@ func NewEventHandler(p EventHandlerParams) (*eventhandler.Handler, error) {
 	if err != nil {
 		return nil, err
 	}
-	transp := eventhandler.NewTransport(t.Client, p.URL, p.Token, p.APIKey, p.Headers)
-	return eventhandler.New(eventhandler.Config{
+	transp := eventhandler.NewTransport(p.Logger, t.Client, p.URL, p.Token, p.APIKey, p.Headers)
+	return eventhandler.New(p.Logger, eventhandler.Config{
 		Path:                      filepath.Join("events", p.Path),
 		Transport:                 transp,
 		Storage:                   events,

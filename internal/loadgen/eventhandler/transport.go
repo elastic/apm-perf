@@ -9,17 +9,20 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+
+	"go.uber.org/zap"
 )
 
 // Transport sends the contents of a reader to a remote APM Server.
 type Transport struct {
+	logger        *zap.Logger
 	client        *http.Client
 	intakeHeaders http.Header
 	intakeV2URL   string
 }
 
 // NewTransport initializes a new ReplayTransport.
-func NewTransport(c *http.Client, srvURL, token, apiKey string, headers map[string]string) *Transport {
+func NewTransport(logger *zap.Logger, c *http.Client, srvURL, token, apiKey string, headers map[string]string) *Transport {
 	intakeHeaders := make(http.Header)
 	intakeHeaders.Set("Content-Encoding", "deflate")
 	intakeHeaders.Set("Content-Type", "application/x-ndjson")
@@ -29,6 +32,7 @@ func NewTransport(c *http.Client, srvURL, token, apiKey string, headers map[stri
 		intakeHeaders.Set(name, header)
 	}
 	return &Transport{
+		logger:        logger.Named("transport"),
 		client:        c,
 		intakeV2URL:   srvURL + `/intake/v2/events`,
 		intakeHeaders: intakeHeaders,
@@ -49,11 +53,23 @@ func (t *Transport) SendV2Events(ctx context.Context, r io.Reader, ignoreErrs bo
 }
 
 func (t *Transport) sendEvents(req *http.Request, r io.Reader, ignoreErrs bool) error {
+	t.logger.Debug("sending request")
 	res, err := t.client.Do(req)
 	if err != nil {
-		return err
+		return fmt.Errorf("cannot complete request: %w", err)
 	}
 	defer res.Body.Close()
+
+	body := ""
+
+	if res.Body != nil {
+		if b, err := io.ReadAll(res.Body); err != nil {
+			return fmt.Errorf("cannot read body: %w", err)
+		} else {
+			body = string(b)
+		}
+	}
+	t.logger.Debug("request failed", zap.Int("status_code", res.StatusCode), zap.String("response", body))
 
 	if !ignoreErrs {
 		switch res.StatusCode / 100 {

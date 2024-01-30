@@ -26,6 +26,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 	"golang.org/x/time/rate"
 )
 
@@ -78,7 +79,7 @@ func newHandler(tb testing.TB, opts ...newHandlerOption) (*Handler, *mockServer)
 	ms := &mockServer{got: &bytes.Buffer{}}
 	srv := httptest.NewServer(ms)
 	ms.close = srv.Close
-	transp := NewTransport(srv.Client(), srv.URL, "", "", nil)
+	transp := NewTransport(zap.NewNop(), srv.Client(), srv.URL, "", "", nil)
 
 	config := Config{
 		Path:      "*.ndjson",
@@ -90,7 +91,7 @@ func newHandler(tb testing.TB, opts ...newHandlerOption) (*Handler, *mockServer)
 		opt(&config)
 	}
 
-	h, err := New(config)
+	h, err := New(zap.NewNop(), config)
 	require.NoError(tb, err)
 	tb.Cleanup(srv.Close)
 
@@ -166,7 +167,7 @@ func withRand(rand *rand.Rand) newHandlerOption {
 func TestHandlerNew(t *testing.T) {
 	storage := os.DirFS("testdata")
 	t.Run("success-matches-files", func(t *testing.T) {
-		h, err := New(Config{
+		h, err := New(zap.NewNop(), Config{
 			Path:      `*.ndjson`,
 			Transport: &Transport{},
 			Storage:   storage,
@@ -175,7 +176,7 @@ func TestHandlerNew(t *testing.T) {
 		assert.Greater(t, len(h.batches), 0)
 	})
 	t.Run("failure-matches-no-files", func(t *testing.T) {
-		h, err := New(Config{
+		h, err := New(zap.NewNop(), Config{
 			Path:      `go*.ndjson`,
 			Transport: &Transport{},
 			Storage:   storage,
@@ -184,7 +185,7 @@ func TestHandlerNew(t *testing.T) {
 		assert.Nil(t, h)
 	})
 	t.Run("failure-invalid-glob", func(t *testing.T) {
-		h, err := New(Config{
+		h, err := New(zap.NewNop(), Config{
 			Path:      "",
 			Transport: &Transport{},
 			Storage:   storage,
@@ -194,7 +195,7 @@ func TestHandlerNew(t *testing.T) {
 	})
 	t.Run("failure-rum-data", func(t *testing.T) {
 		storage := os.DirFS(filepath.Join("testdata", "intake-v3"))
-		h, err := New(Config{
+		h, err := New(zap.NewNop(), Config{
 			Path:      `*.ndjson`,
 			Transport: &Transport{},
 			Storage:   storage,
