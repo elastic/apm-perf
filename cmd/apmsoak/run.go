@@ -81,7 +81,7 @@ func NewCmdRun() *cobra.Command {
 	cmd.Flags().StringVar(&options.SecretToken, "secret-token", "", "Secret token for APM Server. Managed intake service doesn't support secret token")
 	cmd.Flags().StringVar(&options.APIKeys, "api-keys", "", "API keys for managed service. Specify key value pairs as `project_id_1:my_api_key,project_id_2:my_key`")
 	cmd.Flags().BoolVar(&options.BypassProxy, "bypass-proxy", false, "Detach from proxy dependency and provide projectID via header. Useful when testing locally")
-	cmd.Flags().StringVar(&options.Loglevel, "log-level", "info", "Specify the log level to use when running this command. Supported values: debug, info, error")
+	cmd.Flags().StringVar(&options.Loglevel, "log-level", "info", "Specify the log level to use when running this command. Supported values: debug, info, warn, error")
 	return cmd
 }
 
@@ -92,6 +92,8 @@ func getLogger(logLevel string) *zap.Logger {
 	switch logLevel {
 	case "debug":
 		level = zap.DebugLevel
+	case "warn":
+		level = zap.WarnLevel
 	case "error":
 		level = zap.ErrorLevel
 	}
