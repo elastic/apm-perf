@@ -5,6 +5,7 @@
 package eventhandler
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -41,7 +42,7 @@ func NewTransport(logger *zap.Logger, c *http.Client, srvURL, token, apiKey stri
 
 // SendV2Events sends the reader contents to `/intake/v2/events` as a batch.
 func (t *Transport) SendV2Events(ctx context.Context, r io.Reader, ignoreErrs bool) error {
-	req, err := http.NewRequestWithContext(ctx, "POST", t.intakeV2URL, r)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, t.intakeV2URL, r)
 	if err != nil {
 		return err
 	}
@@ -59,17 +60,7 @@ func (t *Transport) sendEvents(req *http.Request, r io.Reader, ignoreErrs bool) 
 		return fmt.Errorf("cannot complete request: %w", err)
 	}
 	defer res.Body.Close()
-
-	body := ""
-
-	if res.Body != nil {
-		if b, err := io.ReadAll(res.Body); err != nil {
-			return fmt.Errorf("cannot read body: %w", err)
-		} else {
-			body = string(b)
-		}
-	}
-	t.logger.Debug("request failed", zap.Int("status_code", res.StatusCode), zap.String("response", body))
+	defer logResponseOutcome(t.logger, res)
 
 	if !ignoreErrs {
 		switch res.StatusCode / 100 {
@@ -81,6 +72,20 @@ func (t *Transport) sendEvents(req *http.Request, r io.Reader, ignoreErrs bool) 
 	}
 
 	return nil
+}
+
+func logResponseOutcome(logger *zap.Logger, res *http.Response) {
+	var body bytes.Buffer
+	if _, err := body.ReadFrom(res.Body); err != nil {
+		logger.Error("cannot read body", zap.Error(err))
+	}
+	if res.StatusCode >= http.StatusBadRequest {
+		logger.Error("request failed",
+			zap.Int("status_code", res.StatusCode), zap.String("response", body.String()))
+	} else {
+		logger.Debug("request completed",
+			zap.Int("status_code", res.StatusCode), zap.String("response", body.String()))
+	}
 }
 
 func getAuthHeader(token string, apiKey string) string {
