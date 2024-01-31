@@ -75,6 +75,9 @@ func (t *Transport) sendEvents(req *http.Request, r io.Reader, ignoreErrs bool) 
 }
 
 func logResponseOutcome(logger *zap.Logger, res *http.Response) {
+	if res == nil {
+		return
+	}
 	var body bytes.Buffer
 	if _, err := body.ReadFrom(res.Body); err != nil {
 		logger.Error("cannot read body", zap.Error(err))

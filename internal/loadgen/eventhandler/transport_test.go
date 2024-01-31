@@ -3,6 +3,8 @@ package eventhandler
 import (
 	"bytes"
 	"context"
+	"io"
+	"net/http"
 	"net/http/httptest"
 	"testing"
 
@@ -15,7 +17,7 @@ import (
 )
 
 func TestTransport_SendEventV2Logs(t *testing.T) {
-	s := `{"metadata":{"system":{"architecture":"arm64","hostname":"3ff988a6070f","platform":"linux"},"process":{"pid":1,"argv":["/opbeans-go","-log-json","-log-level=debug","-listen=:3000","-frontend=/opbeans-frontend","-db=postgres:","-cache=redis://redis:6379"],"ppid":0,"title":"opbeans-go"},"service":{"agent":{"name":"go","version":"2.0.0"},"environment":"production","language":{"name":"go","version":"go1.17.7"},"name":"opbeans-go","runtime":{"name":"gc","version":"go1.17.7"},"version":"None"}}}`
+	s := `{"metadata":{"service":{"name":"foo","version":"bar"}}}`
 	var w bytes.Buffer
 	_, err := zlib.NewWriter(&w).Write([]byte(s))
 	require.NoError(t, err)
@@ -41,7 +43,37 @@ func TestTransport_SendEventV2Logs(t *testing.T) {
 	t.Run("log error if status code is 400 with ignoreErrors", func(t *testing.T) {
 		testBadRequestWithIgnoreErrors(t, srv, true, zap.ErrorLevel, assert.NoError)
 	})
+}
 
+func TestTransport_logResponseOutcome(t *testing.T) {
+	core, logs := observer.New(zap.DebugLevel)
+
+	t.Run("non-nil response with empty body", func(t *testing.T) {
+		logResponseOutcome(
+			zap.New(core),
+			&http.Response{
+				Body:       http.NoBody,
+				StatusCode: http.StatusCreated,
+			})
+		assert.NotEmpty(t, logs.TakeAll())
+	})
+
+	t.Run("non-nil response with body", func(t *testing.T) {
+		logResponseOutcome(
+			zap.New(core),
+			&http.Response{
+				Body:       io.NopCloser(bytes.NewBufferString("anything")),
+				StatusCode: http.StatusCreated,
+			})
+		assert.NotEmpty(t, logs.TakeAll())
+	})
+
+	t.Run("nil response early return", func(t *testing.T) {
+		logResponseOutcome(
+			zap.New(core),
+			nil)
+		assert.Empty(t, logs.TakeAll())
+	})
 }
 
 func testBadRequestWithIgnoreErrors(
