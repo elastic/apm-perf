@@ -114,9 +114,13 @@ func runAgent(ctx context.Context, runner *Runner, config ScenarioConfig, rng *r
 }
 
 func getHandlerParams(runnerConfig *RunnerConfig, config ScenarioConfig) (loadgen.EventHandlerParams, error) {
-	// if AgentName is not specified, using all the agents,
+	// if AgentName is not specified, using all the APM agents,
 	// but shares the allowed events numbers sent for given duration(e.g. 4 agents send 10000/s in total)
+	if config.AgentName == "" {
+		config.AgentName = "apm-"
+	}
 	path := config.AgentName + "*.ndjson"
+
 	var params loadgen.EventHandlerParams
 	if config.Headers == nil {
 		config.Headers = make(map[string]string)
@@ -139,6 +143,22 @@ func getHandlerParams(runnerConfig *RunnerConfig, config ScenarioConfig) (loadge
 		return params, err
 	}
 
+	protocol := "apm/http"
+	if strings.HasPrefix(config.AgentName, "otlp-") {
+		protocol = "otlp/http"
+	}
+
+	datatype := "any"
+	if protocol == "otlp/http" {
+		if strings.HasPrefix(config.AgentName, "otlp-logs") {
+			datatype = "logs"
+		} else if strings.HasPrefix(config.AgentName, "otlp-metrics") {
+			datatype = "metrics"
+		} else if strings.HasPrefix(config.AgentName, "otlp-traces") {
+			datatype = "traces"
+		}
+	}
+
 	params = loadgen.EventHandlerParams{
 		Path:                      path,
 		URL:                       serverURL.String(),
@@ -154,6 +174,9 @@ func getHandlerParams(runnerConfig *RunnerConfig, config ScenarioConfig) (loadge
 		RewriteTransactionTypes:   config.RewriteTransactionTypes,
 		RewriteTimestamps:         true,
 		Headers:                   config.Headers,
+
+		Protocol: protocol,
+		Datatype: datatype,
 	}
 
 	return params, nil

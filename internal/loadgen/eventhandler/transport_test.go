@@ -32,8 +32,8 @@ func TestTransport_SendEventV2Logs(t *testing.T) {
 
 	t.Run("always log status code in debug", func(t *testing.T) {
 		core, logs := observer.New(zap.DebugLevel)
-		err = NewTransport(zap.New(core), srv.Client(), srv.URL, "", "", nil).
-			SendV2Events(context.Background(), &w, false)
+		err = NewAPMTransport(zap.New(core), srv.Client(), srv.URL, "", "", nil).
+			SendEvents(context.Background(), &w, false)
 
 		assert.NoError(t, err)
 		assert.True(t, logs.FilterFieldKey("status_code").Len() == 1)
@@ -89,9 +89,9 @@ func testBadRequestWithIgnoreErrors(
 	t.Helper()
 
 	core, logs := observer.New(logLevel)
-	err := NewTransport(zap.New(core), srv.Client(), srv.URL, "", "", nil).
+	err := NewAPMTransport(zap.New(core), srv.Client(), srv.URL, "", "", nil).
 		// Always make the call fail due to HTTP 400, because the body is not compressed
-		SendV2Events(context.Background(), bytes.NewBufferString("foo"), ignoreErrors)
+		SendEvents(context.Background(), bytes.NewBufferString("foo"), ignoreErrors)
 
 	errorCheck(t, err)
 	var (

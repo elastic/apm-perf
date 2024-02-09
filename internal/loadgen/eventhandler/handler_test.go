@@ -79,19 +79,20 @@ func newHandler(tb testing.TB, opts ...newHandlerOption) (*Handler, *mockServer)
 	ms := &mockServer{got: &bytes.Buffer{}}
 	srv := httptest.NewServer(ms)
 	ms.close = srv.Close
-	transp := NewTransport(zap.NewNop(), srv.Client(), srv.URL, "", "", nil)
+	transp := NewAPMTransport(zap.NewNop(), srv.Client(), srv.URL, "", "", nil)
 
 	config := Config{
 		Path:      "*.ndjson",
 		Transport: transp,
 		Storage:   os.DirFS("testdata"),
 		Limiter:   rate.NewLimiter(rate.Inf, 0),
+		Writer:    writeAPMEvents,
 	}
 	for _, opt := range opts {
 		opt(&config)
 	}
 
-	h, err := New(zap.NewNop(), config)
+	h, err := New(zap.NewNop(), config, &APMEventCollector{})
 	require.NoError(tb, err)
 	tb.Cleanup(srv.Close)
 
@@ -169,27 +170,30 @@ func TestHandlerNew(t *testing.T) {
 	t.Run("success-matches-files", func(t *testing.T) {
 		h, err := New(zap.NewNop(), Config{
 			Path:      `*.ndjson`,
-			Transport: &Transport{},
+			Transport: &APMTransport{},
 			Storage:   storage,
-		})
+			Writer:    writeAPMEvents,
+		}, &APMEventCollector{})
 		require.NoError(t, err)
 		assert.Greater(t, len(h.batches), 0)
 	})
 	t.Run("failure-matches-no-files", func(t *testing.T) {
 		h, err := New(zap.NewNop(), Config{
 			Path:      `go*.ndjson`,
-			Transport: &Transport{},
+			Transport: &APMTransport{},
 			Storage:   storage,
-		})
+			Writer:    writeAPMEvents,
+		}, &APMEventCollector{})
 		require.EqualError(t, err, "eventhandler: glob matched no files, please specify a valid glob pattern")
 		assert.Nil(t, h)
 	})
 	t.Run("failure-invalid-glob", func(t *testing.T) {
 		h, err := New(zap.NewNop(), Config{
 			Path:      "",
-			Transport: &Transport{},
+			Transport: &APMTransport{},
 			Storage:   storage,
-		})
+			Writer:    writeAPMEvents,
+		}, &APMEventCollector{})
 		require.EqualError(t, err, "eventhandler: glob matched no files, please specify a valid glob pattern")
 		assert.Nil(t, h)
 	})
@@ -197,10 +201,11 @@ func TestHandlerNew(t *testing.T) {
 		storage := os.DirFS(filepath.Join("testdata", "intake-v3"))
 		h, err := New(zap.NewNop(), Config{
 			Path:      `*.ndjson`,
-			Transport: &Transport{},
+			Transport: &APMTransport{},
 			Storage:   storage,
-		})
-		require.EqualError(t, err, "rum data support not implemented")
+			Writer:    writeAPMEvents,
+		}, &APMEventCollector{})
+		require.EqualError(t, err, "line filter failed: rum data support not implemented")
 		assert.Nil(t, h)
 	})
 }

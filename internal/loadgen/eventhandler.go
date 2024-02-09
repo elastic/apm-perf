@@ -46,6 +46,15 @@ type EventHandlerParams struct {
 	// Headers contains HTTP headers shipped with all requests.
 	// NOTE: these headers are not sanitized in logs.
 	Headers map[string]string
+
+	// One of: apm/http, otlp/http
+	// NOTE: otlp/grpc is not supported
+	Protocol string
+	// One of: any, logs, metrics, traces
+	// NOTE: for Protocol apm/http there is no difference
+	// between each value. When using Protocol otlp/http
+	// each data type requires a separate EventHandler.
+	Datatype string
 }
 
 func (e EventHandlerParams) MarshalLogObject(enc zapcore.ObjectEncoder) error {
@@ -79,16 +88,34 @@ func NewEventHandler(p EventHandlerParams) (*eventhandler.Handler, error) {
 	if p.Logger == nil {
 		return nil, fmt.Errorf("nil logger in params")
 	}
+	switch p.Protocol {
+	case "apm/http":
+		return newAPMEventHandler(p)
+	case "otlp/http":
+		// TODO: support OTLP event handling
+		// switch p.Datatype {
+		// case "logs":
+		// case "metrics":
+		// case "traces":
+		// }
+
+		return nil, fmt.Errorf("invalid datatype (%s) for protocol (%s)", p.Datatype, p.Protocol)
+	}
+
+	return nil, fmt.Errorf("invalid or unsupported protocol (%s)", p.Protocol)
+}
+
+func newAPMEventHandler(p EventHandlerParams) (*eventhandler.Handler, error) {
 	// We call the HTTPTransport constructor to avoid copying all the config
 	// parsing that creates the `*http.Client`.
 	t, err := transport.NewHTTPTransport(transport.HTTPTransportOptions{})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("cannot create HTTP transport: %w", err)
 	}
-	transp := eventhandler.NewTransport(p.Logger, t.Client, p.URL, p.Token, p.APIKey, p.Headers)
-	return eventhandler.New(p.Logger, eventhandler.Config{
+
+	c := eventhandler.Config{
 		Path:                      filepath.Join("events", p.Path),
-		Transport:                 transp,
+		Transport:                 eventhandler.NewAPMTransport(p.Logger, t.Client, p.URL, p.Token, p.APIKey, p.Headers),
 		Storage:                   events,
 		Limiter:                   p.Limiter,
 		Rand:                      p.Rand,
@@ -101,5 +128,7 @@ func NewEventHandler(p EventHandlerParams) (*eventhandler.Handler, error) {
 		RewriteTransactionNames:   p.RewriteTransactionNames,
 		RewriteTransactionTypes:   p.RewriteTransactionTypes,
 		RewriteTimestamps:         p.RewriteTimestamps,
-	})
+	}
+
+	return eventhandler.NewAPM(p.Logger, c)
 }

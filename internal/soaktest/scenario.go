@@ -8,20 +8,44 @@ type Scenarios struct {
 	Scenarios map[string][]ScenarioConfig `yaml:"scenarios"`
 }
 
+// ScenarioConfig contains scenario specific configuration parameters.
+// All the field in this struct come from user input through the scenario
+// config file.
 type ScenarioConfig struct {
-	ProjectID                 string            `yaml:"project_id"`
-	ServerURL                 string            `yaml:"server"`
-	APIKey                    string            `yaml:"api_key"`
-	AgentName                 string            `yaml:"agent_name"`
-	AgentsReplicas            int               `yaml:"agent_replicas"`
-	EventRate                 string            `yaml:"event_rate"`
-	RewriteIDs                bool              `yaml:"rewrite_ids"`
-	RewriteTimestamps         bool              `yaml:"rewrite_timestamps"`
-	RewriteServiceNames       bool              `yaml:"rewrite_service_names"`
-	RewriteServiceNodeNames   bool              `yaml:"rewrite_service_node_names"`
-	RewriteServiceTargetNames bool              `yaml:"rewrite_service_target_names"`
-	RewriteSpanNames          bool              `yaml:"rewrite_span_names"`
-	RewriteTransactionNames   bool              `yaml:"rewrite_transaction_names"`
-	RewriteTransactionTypes   bool              `yaml:"rewrite_transaction_types"`
-	Headers                   map[string]string `yaml:"headers"`
+	// ProjectID is a project alpha numeric ID, assigned to each generated data
+	// point.
+	ProjectID string `yaml:"project_id"`
+	// ServerURL is the Elasticsearch server URL where data from the scenario
+	// is pushed to.
+	ServerURL string `yaml:"server"`
+	// APIKey is a API key used to push data to the specified server.
+	// When is an empty string its value is taken from RunnerConfig.APIKeys
+	// (selecting the appropriate one by ProjectID).
+	APIKey string `yaml:"api_key"`
+	// AgentName is a string used to specify which events file to source.
+	// For Elastic APM agents this value must be the agent name (es go,
+	// ruby, nodejs).
+	// For OTLP agents this value bust be <otlp-traces|metrics|logs>, as
+	// the OTLP protocol uses different endpoints for different data types.
+	AgentName string `yaml:"agent_name"`
+	// AgentsReplicas is the number of different agents that this scenario
+	// will emulate when generating data points.
+	AgentsReplicas int `yaml:"agent_replicas"`
+	// EventRate represent the rate of events generated.
+	// Must be in the format <number of events>/<time>. <time> is parsed
+	// as a Go time value.
+	// FIXME: improve comment
+	EventRate string `yaml:"event_rate"`
+	// Headers contains additional HTTP headers to attach to every data
+	// request sent as part of the scenario.
+	Headers map[string]string `yaml:"headers"`
+
+	RewriteIDs                bool `yaml:"rewrite_ids"`
+	RewriteTimestamps         bool `yaml:"rewrite_timestamps"`
+	RewriteServiceNames       bool `yaml:"rewrite_service_names"`
+	RewriteServiceNodeNames   bool `yaml:"rewrite_service_node_names"`
+	RewriteServiceTargetNames bool `yaml:"rewrite_service_target_names"`
+	RewriteSpanNames          bool `yaml:"rewrite_span_names"`
+	RewriteTransactionNames   bool `yaml:"rewrite_transaction_names"`
+	RewriteTransactionTypes   bool `yaml:"rewrite_transaction_types"`
 }

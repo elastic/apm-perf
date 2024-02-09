@@ -4,12 +4,12 @@
 
 package eventhandler
 
-import (
-	"context"
-	"io"
-)
+import "time"
 
-// Transport sends the contents of a reader to a remote APM Server.
-type Transport interface {
-	SendEvents(ctx context.Context, r io.Reader, ignoreErrs bool) error
+type EventCollector interface {
+	Filter([]byte) error
+	IsMeta([]byte) bool
+	Process([]byte) event
 }
+
+type EventWriter func(config Config, minTimestamp time.Time, w *pooledWriter, b batch, baseTimestamp time.Time, randomBits uint64) error
