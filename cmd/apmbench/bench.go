@@ -208,6 +208,7 @@ func newEventHandler(tb testing.TB, p string, l *rate.Limiter) *eventhandler.Han
 		RewriteIDs:        loadgencfg.Config.RewriteIDs,
 		RewriteTimestamps: loadgencfg.Config.RewriteTimestamps,
 		Headers:           loadgencfg.Config.Headers,
+		Protocol:          loadgencfg.Config.Protocol,
 	})
 	if err != nil {
 		// panicing ensures that the error is reported

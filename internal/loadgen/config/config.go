@@ -31,6 +31,7 @@ var Config struct {
 	RewriteTransactionNames   bool
 	RewriteTransactionTypes   bool
 	Headers                   map[string]string
+	Protocol                  string
 }
 
 type RateFlag struct {
@@ -112,6 +113,7 @@ func init() {
 	)
 	flag.Var(&Config.EventRate, "event-rate", "Event rate in format of {burst}/{interval}. For example, 200/5s, <= 0 values evaluate to Inf (default 0/s)")
 	flag.BoolVar(&Config.IgnoreErrors, "ignore-errors", false, "Ignore HTTP errors while sending events")
+	flag.StringVar(&Config.Protocol, "protocol", "apm/http", "One of: apm/http, otlp/http")
 
 	rewriteNames := map[string]*bool{
 		"service.name":        &Config.RewriteServiceNames,
