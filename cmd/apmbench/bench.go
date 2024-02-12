@@ -9,6 +9,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"net/url"
+	"strings"
 	"testing"
 	"time"
 
@@ -71,23 +72,23 @@ func BenchmarkOTLPTraces(b *testing.B, l *rate.Limiter) {
 }
 
 func BenchmarkAgentAll(b *testing.B, l *rate.Limiter) {
-	benchmarkAgent(b, l, `*.ndjson`)
+	benchmarkAgent(b, l, `apm-*.ndjson`)
 }
 
 func BenchmarkAgentGo(b *testing.B, l *rate.Limiter) {
-	benchmarkAgent(b, l, `go*.ndjson`)
+	benchmarkAgent(b, l, `apm-go*.ndjson`)
 }
 
 func BenchmarkAgentNodeJS(b *testing.B, l *rate.Limiter) {
-	benchmarkAgent(b, l, `nodejs*.ndjson`)
+	benchmarkAgent(b, l, `apm-nodejs*.ndjson`)
 }
 
 func BenchmarkAgentPython(b *testing.B, l *rate.Limiter) {
-	benchmarkAgent(b, l, `python*.ndjson`)
+	benchmarkAgent(b, l, `apm-python*.ndjson`)
 }
 
 func BenchmarkAgentRuby(b *testing.B, l *rate.Limiter) {
-	benchmarkAgent(b, l, `ruby*.ndjson`)
+	benchmarkAgent(b, l, `apm-ruby*.ndjson`)
 }
 
 func Benchmark10000AggregationGroups(b *testing.B, l *rate.Limiter) {
@@ -197,6 +198,10 @@ func newOTLPExporter(tb testing.TB) *otlptrace.Exporter {
 }
 
 func newEventHandler(tb testing.TB, p string, l *rate.Limiter) *eventhandler.Handler {
+	protocol := "apm/http"
+	if strings.HasPrefix(p, "otlp-") {
+		protocol = "otlp/http"
+	}
 	h, err := loadgen.NewEventHandler(loadgen.EventHandlerParams{
 		Logger:            zap.NewNop(),
 		Path:              p,
@@ -208,6 +213,7 @@ func newEventHandler(tb testing.TB, p string, l *rate.Limiter) *eventhandler.Han
 		RewriteIDs:        loadgencfg.Config.RewriteIDs,
 		RewriteTimestamps: loadgencfg.Config.RewriteTimestamps,
 		Headers:           loadgencfg.Config.Headers,
+		Protocol:          protocol,
 	})
 	if err != nil {
 		// panicing ensures that the error is reported
