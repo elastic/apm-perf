@@ -52,6 +52,9 @@ func main() {
 		BenchmarkAgentPython,
 		BenchmarkAgentRuby,
 		Benchmark10000AggregationGroups,
+		BenchmarkTelemetrygenOTLPTraces,
+		BenchmarkTelemetrygenOTLPLogs,
+		BenchmarkTelemetrygenOTLPMetrics,
 	); err != nil {
 		logger.Fatal("failed to run benchmarks", zap.Error(err))
 	}
