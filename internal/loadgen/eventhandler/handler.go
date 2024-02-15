@@ -244,7 +244,7 @@ func New(logger *zap.Logger, config Config, ec EventCollector) (*Handler, error)
 }
 
 // SendBatchesInLoop will send events in loop, such that it can be used to warm up the remote APM Server,
-// by sending events until the context is cancelled or done channel is closed.
+// by sending events until the context is canceled.
 func (h *Handler) SendBatchesInLoop(ctx context.Context) error {
 	// state is created here because the total number of events in h.batches can be smaller than the burst
 	// and it can lead the sendBatches to finish its cycle without sending the desired burst number of events.
@@ -255,19 +255,38 @@ func (h *Handler) SendBatchesInLoop(ctx context.Context) error {
 		burst: h.config.Limiter.Burst(),
 	}
 
+	// Use a buffer of 1 to avoid blocking the sendErrs channel
+	// if we immediately encounter an error.
+	sendErrs := make(chan error, 1)
+
+	// Send events in batches and when getting an error restart from where
+	// we left.
+	go func() {
+		defer close(sendErrs)
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				if _, err := h.sendBatches(ctx, &s); err != nil {
+					sendErrs <- err
+					continue
+				}
+				// safeguard `s.sent` so that it doesn't exceed math.MaxInt
+				// but keep the remainder so the next batches know where to start
+				if s.burst > 0 {
+					s.sent = s.sent % s.burst
+				}
+			}
+		}
+	}()
+
 	for {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		default:
-			if _, err := h.sendBatches(ctx, &s); err != nil {
-				return err
-			}
-			// safeguard `s.sent` so that it doesn't exceed math.MaxInt
-			// but keep the remainder so the next batches know where to start
-			if s.burst > 0 {
-				s.sent = s.sent % s.burst
-			}
+		case err := <-sendErrs:
+			h.logger.Error("failed to send batch of events", zap.Error(err))
 		}
 	}
 }

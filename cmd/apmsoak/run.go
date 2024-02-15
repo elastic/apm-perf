@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"os"
+	"os/signal"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -67,7 +68,12 @@ func NewCmdRun() *cobra.Command {
 				logger.Fatal("Fail to initialize runner", zap.Error(err))
 			}
 
-			if err := runner.Run(cmd.Context()); err != nil {
+			// Graceful shutdown driven by SIGINT.
+			// Nothing else is expected to stop the runner.
+			ctx, cancel := signal.NotifyContext(cmd.Context(), os.Interrupt)
+			defer cancel()
+
+			if err := runner.Run(ctx); err != nil {
 				if !errors.Is(err, context.Canceled) {
 					logger.Fatal("runner exited with error", zap.Error(err))
 				}
