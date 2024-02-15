@@ -33,7 +33,7 @@ type ScenarioConfig struct {
 	AgentsReplicas int `yaml:"agent_replicas"`
 	// EventRate represent the rate of events generated.
 	// Must be in the format <number of events>/<time>. <time> is parsed
-	// as a Go time value.
+	// as a Go time.Duration value.
 	// FIXME: improve comment
 	EventRate string `yaml:"event_rate"`
 	// Headers contains additional HTTP headers to attach to every data
