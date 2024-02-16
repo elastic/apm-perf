@@ -34,7 +34,7 @@ build:
 
 .PHONY: test
 test: go.mod
-	go test -v ./...
+	go test -race -v ./...
 
 .PHONY: package
 package: BASE_IMAGE_VERSION=$$(cat .go-version)
