@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/signal"
 	"strings"
+	"syscall"
 
 	"github.com/spf13/cobra"
 	"go.elastic.co/ecszap"
@@ -68,9 +69,9 @@ func NewCmdRun() *cobra.Command {
 				logger.Fatal("Fail to initialize runner", zap.Error(err))
 			}
 
-			// Graceful shutdown driven by SIGINT.
+			// Graceful shutdown driven by SIGINT or SIGTERM.
 			// Nothing else is expected to stop the runner.
-			ctx, cancel := signal.NotifyContext(cmd.Context(), os.Interrupt)
+			ctx, cancel := signal.NotifyContext(cmd.Context(), syscall.SIGINT, syscall.SIGTERM)
 			defer cancel()
 
 			if err := runner.Run(ctx); err != nil {
