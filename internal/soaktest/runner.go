@@ -33,6 +33,7 @@ type RunnerConfig struct {
 	SecretToken   string
 	APIKeys       map[string]string
 	BypassProxy   bool
+	IgnoreErrors  bool
 }
 
 type Runner struct {
@@ -164,6 +165,7 @@ func getHandlerParams(runnerConfig *RunnerConfig, config ScenarioConfig) (loadge
 		URL:                       serverURL.String(),
 		APIKey:                    config.APIKey,
 		Token:                     runnerConfig.SecretToken,
+		IgnoreErrors:              runnerConfig.IgnoreErrors,
 		Limiter:                   loadgen.GetNewLimiter(burst, interval),
 		RewriteIDs:                true,
 		RewriteServiceNames:       config.RewriteServiceNames,

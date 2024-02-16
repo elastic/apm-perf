@@ -269,7 +269,9 @@ func (h *Handler) SendBatchesInLoop(ctx context.Context) error {
 				return
 			default:
 				if _, err := h.sendBatches(ctx, &s); err != nil {
-					sendErrs <- err
+					if !h.config.IgnoreErrors {
+						sendErrs <- err
+					}
 					continue
 				}
 				// safeguard `s.sent` so that it doesn't exceed math.MaxInt
