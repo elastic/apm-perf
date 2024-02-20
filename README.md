@@ -35,3 +35,7 @@ Note that the managed service will use API key based auth and one soaktest can t
 ```sh
 ./apmsoak run --scenario=fairness --api-keys="project_1:key-to-project_1,project_2:key-to-project_2"
 ```
+
+## internal/telemetrygen
+
+This package is from https://github.com/open-telemetry/opentelemetry-collector-contrib but slightly modified so that it can be used within apm-perf.
