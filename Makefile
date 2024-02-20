@@ -8,7 +8,8 @@ MODULE_DEPS=$(sort $(shell go list -deps -tags=darwin,linux,windows -f "{{with .
 all: test
 
 fmt: tools/go.mod
-	@go run -modfile=tools/go.mod github.com/elastic/go-licenser -license=Elasticv2 .
+	@go run -modfile=tools/go.mod github.com/elastic/go-licenser -license=ASL2 -licensor="The OpenTelemetry Authors" ./internal/telemetrygen
+	@go run -modfile=tools/go.mod github.com/elastic/go-licenser -d -license=Elasticv2 -exclude=internal/telemetrygen .
 	@go run -modfile=tools/go.mod golang.org/x/tools/cmd/goimports -local github.com/elastic/ -w .
 
 lint: tools/go.mod

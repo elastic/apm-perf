@@ -1,3 +1,7 @@
+// Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+// or more contributor license agreements. Licensed under the Elastic License 2.0;
+// you may not use this file except in compliance with the Elastic License 2.0.
+
 package main
 
 import (
@@ -5,11 +9,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/open-telemetry/opentelemetry-collector-contrib/cmd/telemetrygen/common"
-	"github.com/open-telemetry/opentelemetry-collector-contrib/cmd/telemetrygen/logs"
-	"github.com/open-telemetry/opentelemetry-collector-contrib/cmd/telemetrygen/metrics"
-	"github.com/open-telemetry/opentelemetry-collector-contrib/cmd/telemetrygen/traces"
 	"golang.org/x/time/rate"
+
+	"github.com/elastic/apm-perf/internal/telemetrygen/common"
+	"github.com/elastic/apm-perf/internal/telemetrygen/logs"
+	"github.com/elastic/apm-perf/internal/telemetrygen/metrics"
+	"github.com/elastic/apm-perf/internal/telemetrygen/traces"
 
 	loadgencfg "github.com/elastic/apm-perf/internal/loadgen/config"
 )
