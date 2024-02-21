@@ -19,6 +19,7 @@ package common
 
 import (
 	"fmt"
+	"go.uber.org/zap"
 	"strings"
 	"time"
 
@@ -83,6 +84,8 @@ type Config struct {
 
 	// OTLP mTLS configuration
 	ClientAuth ClientAuth
+
+	Logger *zap.Logger
 }
 
 type ClientAuth struct {

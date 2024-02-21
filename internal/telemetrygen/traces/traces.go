@@ -42,9 +42,13 @@ import (
 )
 
 func Start(cfg *Config) error {
-	logger, err := common.CreateLogger(cfg.SkipSettingGRPCLogger)
-	if err != nil {
-		return err
+	logger := cfg.Logger
+	if logger == nil {
+		newLogger, err := common.CreateLogger(cfg.SkipSettingGRPCLogger)
+		if err != nil {
+			return err
+		}
+		logger = newLogger
 	}
 
 	var exp *otlptrace.Exporter
@@ -52,7 +56,7 @@ func Start(cfg *Config) error {
 		var exporterOpts []otlptracehttp.Option
 
 		logger.Info("starting HTTP exporter")
-		exporterOpts, err = httpExporterOptions(cfg)
+		exporterOpts, err := httpExporterOptions(cfg)
 		if err != nil {
 			return err
 		}
@@ -64,7 +68,7 @@ func Start(cfg *Config) error {
 		var exporterOpts []otlptracegrpc.Option
 
 		logger.Info("starting gRPC exporter")
-		exporterOpts, err = grpcExporterOptions(cfg)
+		exporterOpts, err := grpcExporterOptions(cfg)
 		if err != nil {
 			return err
 		}
@@ -87,7 +91,7 @@ func Start(cfg *Config) error {
 		defer func() {
 			logger.Info("stop the batch span processor")
 			if tempError := ssp.Shutdown(context.Background()); tempError != nil {
-				logger.Error("failed to stop the batch span processor", zap.Error(err))
+				logger.Error("failed to stop the batch span processor", zap.Error(tempError))
 			}
 		}()
 	}
@@ -106,7 +110,7 @@ func Start(cfg *Config) error {
 	}
 	otel.SetTracerProvider(tracerProvider)
 
-	if err = Run(cfg, logger); err != nil {
+	if err := Run(cfg, logger); err != nil {
 		logger.Error("failed to execute the test scenario.", zap.Error(err))
 		return err
 	}

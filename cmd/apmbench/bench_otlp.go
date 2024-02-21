@@ -9,14 +9,14 @@ import (
 	"testing"
 	"time"
 
+	"go.uber.org/zap"
 	"golang.org/x/time/rate"
 
+	loadgencfg "github.com/elastic/apm-perf/internal/loadgen/config"
 	"github.com/elastic/apm-perf/internal/telemetrygen/common"
 	"github.com/elastic/apm-perf/internal/telemetrygen/logs"
 	"github.com/elastic/apm-perf/internal/telemetrygen/metrics"
 	"github.com/elastic/apm-perf/internal/telemetrygen/traces"
-
-	loadgencfg "github.com/elastic/apm-perf/internal/loadgen/config"
 )
 
 func commonConfigWithHTTPPath(httpPath string) common.Config {
@@ -64,6 +64,7 @@ func commonConfigWithHTTPPath(httpPath string) common.Config {
 		TelemetryAttributes:   nil,
 		CaFile:                "",
 		ClientAuth:            common.ClientAuth{},
+		Logger:                zap.NewNop(),
 	}
 }
 

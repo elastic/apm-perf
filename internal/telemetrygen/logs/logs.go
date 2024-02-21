@@ -34,9 +34,13 @@ import (
 
 // Start starts the log telemetry generator
 func Start(cfg *Config) error {
-	logger, err := common.CreateLogger(cfg.SkipSettingGRPCLogger)
-	if err != nil {
-		return err
+	logger := cfg.Logger
+	if logger == nil {
+		newLogger, err := common.CreateLogger(cfg.SkipSettingGRPCLogger)
+		if err != nil {
+			return err
+		}
+		logger = newLogger
 	}
 
 	e, err := newExporter(context.Background(), cfg)

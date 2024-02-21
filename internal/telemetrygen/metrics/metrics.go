@@ -37,9 +37,13 @@ import (
 
 // Start starts the metric telemetry generator
 func Start(cfg *Config) error {
-	logger, err := common.CreateLogger(cfg.SkipSettingGRPCLogger)
-	if err != nil {
-		return err
+	logger := cfg.Logger
+	if logger == nil {
+		newLogger, err := common.CreateLogger(cfg.SkipSettingGRPCLogger)
+		if err != nil {
+			return err
+		}
+		logger = newLogger
 	}
 	logger.Info("starting the metrics generator with configuration", zap.Any("config", cfg))
 
@@ -49,7 +53,7 @@ func Start(cfg *Config) error {
 			var exporterOpts []otlpmetrichttp.Option
 
 			logger.Info("starting HTTP exporter")
-			exporterOpts, err = httpExporterOptions(cfg)
+			exporterOpts, err := httpExporterOptions(cfg)
 			if err != nil {
 				return nil, err
 			}
@@ -61,7 +65,7 @@ func Start(cfg *Config) error {
 			var exporterOpts []otlpmetricgrpc.Option
 
 			logger.Info("starting gRPC exporter")
-			exporterOpts, err = grpcExporterOptions(cfg)
+			exporterOpts, err := grpcExporterOptions(cfg)
 			if err != nil {
 				return nil, err
 			}
@@ -70,10 +74,10 @@ func Start(cfg *Config) error {
 				return nil, fmt.Errorf("failed to obtain OTLP gRPC exporter: %w", err)
 			}
 		}
-		return exp, err
+		return exp, nil
 	}
 
-	if err = Run(cfg, expFunc, logger); err != nil {
+	if err := Run(cfg, expFunc, logger); err != nil {
 		logger.Error("failed to stop the exporter", zap.Error(err))
 		return err
 	}
