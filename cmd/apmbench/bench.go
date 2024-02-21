@@ -6,23 +6,17 @@ package main
 
 import (
 	"context"
-	"crypto/tls"
 	"fmt"
 	"net/url"
 	"strings"
 	"testing"
 	"time"
 
-	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
-	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
-	"go.uber.org/zap"
-	"golang.org/x/time/rate"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
-
 	"github.com/elastic/apm-perf/internal/loadgen"
 	loadgencfg "github.com/elastic/apm-perf/internal/loadgen/config"
 	"github.com/elastic/apm-perf/internal/loadgen/eventhandler"
+	"go.uber.org/zap"
+	"golang.org/x/time/rate"
 
 	"go.elastic.co/apm/v2"
 	"go.elastic.co/apm/v2/transport"
@@ -123,56 +117,6 @@ func newTracer(tb testing.TB) *apm.Tracer {
 	}
 	tb.Cleanup(tracer.Close)
 	return tracer
-}
-
-func newOTLPExporter(tb testing.TB) *otlptrace.Exporter {
-	serverURL := loadgencfg.Config.ServerURL
-	secretToken := loadgencfg.Config.SecretToken
-	apiKey := loadgencfg.Config.APIKey
-	endpoint := serverURL.Host
-	if serverURL.Port() == "" {
-		switch serverURL.Scheme {
-		case "http":
-			endpoint += ":80"
-		case "https":
-			endpoint += ":443"
-		}
-	}
-
-	headers := make(map[string]string)
-	for k, v := range loadgencfg.Config.Headers {
-		headers[k] = v
-	}
-	if secretToken != "" || apiKey != "" {
-		if apiKey != "" {
-			// higher priority to APIKey auth
-			headers["Authorization"] = "ApiKey " + apiKey
-		} else {
-			headers["Authorization"] = "Bearer " + secretToken
-		}
-	}
-
-	opts := []otlptracegrpc.Option{
-		otlptracegrpc.WithEndpoint(endpoint),
-		otlptracegrpc.WithDialOption(grpc.WithBlock()),
-		otlptracegrpc.WithHeaders(headers),
-	}
-	if serverURL.Scheme == "http" {
-		opts = append(opts, otlptracegrpc.WithInsecure())
-	} else {
-		tlsCredentials := credentials.NewTLS(&tls.Config{
-			InsecureSkipVerify: true,
-		})
-		opts = append(opts, otlptracegrpc.WithTLSCredentials(tlsCredentials))
-	}
-	exporter, err := otlptracegrpc.New(context.Background(), opts...)
-	if err != nil {
-		// panicing ensures that the error is reported
-		// see: https://github.com/golang/go/issues/32066
-		panic(err)
-	}
-	tb.Cleanup(func() { exporter.Shutdown(context.Background()) })
-	return exporter
 }
 
 func newEventHandler(tb testing.TB, p string, l *rate.Limiter) *eventhandler.Handler {
