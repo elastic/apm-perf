@@ -12,14 +12,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/elastic/apm-perf/internal/loadgen"
-	loadgencfg "github.com/elastic/apm-perf/internal/loadgen/config"
-	"github.com/elastic/apm-perf/internal/loadgen/eventhandler"
+	"go.elastic.co/apm/v2"
+	"go.elastic.co/apm/v2/transport"
 	"go.uber.org/zap"
 	"golang.org/x/time/rate"
 
-	"go.elastic.co/apm/v2"
-	"go.elastic.co/apm/v2/transport"
+	"github.com/elastic/apm-perf/internal/loadgen"
+	loadgencfg "github.com/elastic/apm-perf/internal/loadgen/config"
+	"github.com/elastic/apm-perf/internal/loadgen/eventhandler"
 )
 
 func Benchmark1000Transactions(b *testing.B, l *rate.Limiter) {
