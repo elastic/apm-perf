@@ -15,7 +15,6 @@ import (
 
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
-	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.uber.org/zap"
 	"golang.org/x/time/rate"
 	"google.golang.org/grpc"
@@ -47,27 +46,6 @@ func Benchmark1000Transactions(b *testing.B, l *rate.Limiter) {
 			// TracerOptions?
 			tracer.Flush(nil)
 		}
-	})
-}
-
-func BenchmarkOTLPTraces(b *testing.B, l *rate.Limiter) {
-	b.RunParallel(func(pb *testing.PB) {
-		exporter := newOTLPExporter(b)
-		tracerProvider := sdktrace.NewTracerProvider(
-			sdktrace.WithSampler(sdktrace.AlwaysSample()),
-			sdktrace.WithBatcher(exporter, sdktrace.WithBlocking()),
-		)
-		tracer := tracerProvider.Tracer("tracer")
-		for pb.Next() {
-			if err := l.Wait(context.Background()); err != nil {
-				// panicing ensures that the error is reported
-				// see: https://github.com/golang/go/issues/32066
-				panic(err)
-			}
-			_, span := tracer.Start(context.Background(), "name")
-			span.End()
-		}
-		tracerProvider.ForceFlush(context.Background())
 	})
 }
 
