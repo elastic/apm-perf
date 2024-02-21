@@ -67,7 +67,7 @@ func commonConfigWithHTTPPath(httpPath string) common.Config {
 	}
 }
 
-func BenchmarkTelemetrygenOTLPLogs(b *testing.B, l *rate.Limiter) {
+func BenchmarkOTLPLogs(b *testing.B, l *rate.Limiter) {
 	config := logs.Config{
 		Config:  commonConfigWithHTTPPath("/v1/logs"),
 		NumLogs: b.N,
@@ -78,7 +78,7 @@ func BenchmarkTelemetrygenOTLPLogs(b *testing.B, l *rate.Limiter) {
 	}
 }
 
-func BenchmarkTelemetrygenOTLPTraces(b *testing.B, l *rate.Limiter) {
+func BenchmarkOTLPTraces(b *testing.B, l *rate.Limiter) {
 	config := traces.Config{
 		Config:           commonConfigWithHTTPPath("/v1/traces"),
 		NumTraces:        b.N,
@@ -95,7 +95,7 @@ func BenchmarkTelemetrygenOTLPTraces(b *testing.B, l *rate.Limiter) {
 	}
 }
 
-func BenchmarkTelemetrygenOTLPMetrics(b *testing.B, l *rate.Limiter) {
+func BenchmarkOTLPMetrics(b *testing.B, l *rate.Limiter) {
 	config := metrics.Config{
 		Config:     commonConfigWithHTTPPath("/v1/metrics"),
 		NumMetrics: b.N,
