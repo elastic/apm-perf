@@ -19,12 +19,12 @@ package common
 
 import (
 	"fmt"
-	"go.uber.org/zap"
 	"strings"
 	"time"
 
 	"github.com/spf13/pflag"
 	"go.opentelemetry.io/otel/attribute"
+	"go.uber.org/zap"
 )
 
 var (
