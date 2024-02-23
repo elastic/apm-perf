@@ -15,8 +15,10 @@ import (
 	"math/rand"
 	"net/url"
 	"os"
+	"os/signal"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"go.uber.org/zap"
@@ -34,6 +36,9 @@ type RunnerConfig struct {
 	APIKeys       map[string]string
 	BypassProxy   bool
 	IgnoreErrors  bool
+	// ForceShutdown when set to true, will keep the handler running
+	// until a signal is received to stop it.
+	ForceShutdown bool
 }
 
 type Runner struct {
@@ -68,6 +73,14 @@ func NewRunner(config *RunnerConfig, logger *zap.Logger) (*Runner, error) {
 }
 
 func (runner *Runner) Run(ctx context.Context) error {
+	// Apply graceful shutdown driven by SIGINT or SIGTERM
+	// in case the config is set.
+	if runner.config.ForceShutdown {
+		var cancel context.CancelFunc
+		ctx, cancel = signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)
+		defer cancel()
+	}
+
 	g, gCtx := errgroup.WithContext(ctx)
 	// Create a Rand with the same seed for each agent, so we randomise their IDs consistently.
 	var rngseed int64
@@ -166,6 +179,7 @@ func getHandlerParams(runnerConfig *RunnerConfig, config ScenarioConfig) (loadge
 		APIKey:                    config.APIKey,
 		Token:                     runnerConfig.SecretToken,
 		IgnoreErrors:              runnerConfig.IgnoreErrors,
+		ForceShutdown:             runnerConfig.ForceShutdown,
 		Limiter:                   loadgen.GetNewLimiter(burst, interval),
 		RewriteIDs:                true,
 		RewriteServiceNames:       config.RewriteServiceNames,

@@ -8,9 +8,7 @@ import (
 	"context"
 	"errors"
 	"os"
-	"os/signal"
 	"strings"
-	"syscall"
 
 	"github.com/spf13/cobra"
 	"go.elastic.co/ecszap"
@@ -28,6 +26,7 @@ type RunOptions struct {
 	BypassProxy   bool
 	Loglevel      string
 	IgnoreErrors  bool
+	ForceShutdown bool
 }
 
 func (opts *RunOptions) toRunnerConfig() (*soaktest.RunnerConfig, error) {
@@ -50,6 +49,7 @@ func (opts *RunOptions) toRunnerConfig() (*soaktest.RunnerConfig, error) {
 		APIKeys:       apiKeys,
 		BypassProxy:   opts.BypassProxy,
 		IgnoreErrors:  opts.IgnoreErrors,
+		ForceShutdown: opts.ForceShutdown,
 	}, nil
 }
 
@@ -71,14 +71,10 @@ func NewCmdRun() *cobra.Command {
 				logger.Fatal("Fail to initialize runner", zap.Error(err))
 			}
 
-			// Graceful shutdown driven by SIGINT or SIGTERM.
-			// Nothing else is expected to stop the runner.
-			ctx, cancel := signal.NotifyContext(cmd.Context(), syscall.SIGINT, syscall.SIGTERM)
-			defer cancel()
-
-			if err := runner.Run(ctx); err != nil {
+			if err := runner.Run(cmd.Context()); err != nil {
 				if !errors.Is(err, context.Canceled) {
-					logger.Fatal("runner exited with error", zap.Error(err))
+					logger.Error("runner exited with error", zap.Error(err))
+					return err
 				}
 			}
 			return nil
@@ -92,6 +88,7 @@ func NewCmdRun() *cobra.Command {
 	cmd.Flags().BoolVar(&options.BypassProxy, "bypass-proxy", false, "Detach from proxy dependency and provide projectID via header. Useful when testing locally")
 	cmd.Flags().StringVar(&options.Loglevel, "log-level", "info", "Specify the log level to use when running this command. Supported values: debug, info, warn, error")
 	cmd.Flags().BoolVar(&options.IgnoreErrors, "ignore-errors", false, "Do not report as a failure HTTP responses with status code different than 200")
+	cmd.Flags().BoolVar(&options.ForceShutdown, "force-shutdown", false, "Continue running the soak test until a signal is received to stop it")
 	return cmd
 }
 

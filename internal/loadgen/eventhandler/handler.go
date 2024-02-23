@@ -100,6 +100,10 @@ type Config struct {
 	// events using the event handler.
 	IgnoreErrors bool
 
+	// ForceShutdown when set to true, will keep the handler running
+	// until a signal is received to stop it.
+	ForceShutdown bool
+
 	// Writer writes replayable events to buffer.
 	Writer EventWriter
 
@@ -255,40 +259,25 @@ func (h *Handler) SendBatchesInLoop(ctx context.Context) error {
 		burst: h.config.Limiter.Burst(),
 	}
 
-	// Use a buffer of 1 to avoid blocking the sendErrs channel
-	// if we immediately encounter an error.
-	sendErrs := make(chan error, 1)
-
 	// Send events in batches and when getting an error restart from where
 	// we left.
-	go func() {
-		defer close(sendErrs)
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			default:
-				if _, err := h.sendBatches(ctx, &s); err != nil {
-					if !h.config.IgnoreErrors {
-						sendErrs <- err
-					}
-					continue
-				}
-				// safeguard `s.sent` so that it doesn't exceed math.MaxInt
-				// but keep the remainder so the next batches know where to start
-				if s.burst > 0 {
-					s.sent = s.sent % s.burst
-				}
-			}
-		}
-	}()
-
 	for {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case err := <-sendErrs:
-			h.logger.Error("failed to send batch of events", zap.Error(err))
+		default:
+			if _, err := h.sendBatches(ctx, &s); err != nil {
+				if h.config.ForceShutdown {
+					h.logger.Error("failed to send batch of events", zap.Error(err))
+					continue
+				}
+				return err
+			}
+			// safeguard `s.sent` so that it doesn't exceed math.MaxInt
+			// but keep the remainder so the next batches know where to start
+			if s.burst > 0 {
+				s.sent = s.sent % s.burst
+			}
 		}
 	}
 }

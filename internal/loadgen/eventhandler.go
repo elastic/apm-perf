@@ -35,6 +35,7 @@ type EventHandlerParams struct {
 	Limiter                   *rate.Limiter
 	Rand                      *rand.Rand
 	IgnoreErrors              bool
+	ForceShutdown             bool
 	RewriteIDs                bool
 	RewriteServiceNames       bool
 	RewriteServiceNodeNames   bool
@@ -120,6 +121,7 @@ func newAPMEventHandler(p EventHandlerParams) (*eventhandler.Handler, error) {
 		Limiter:                   p.Limiter,
 		Rand:                      p.Rand,
 		IgnoreErrors:              p.IgnoreErrors,
+		ForceShutdown:             p.ForceShutdown,
 		RewriteIDs:                p.RewriteIDs,
 		RewriteServiceNames:       p.RewriteServiceNames,
 		RewriteServiceNodeNames:   p.RewriteServiceNodeNames,
