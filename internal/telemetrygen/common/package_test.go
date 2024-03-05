@@ -5,8 +5,7 @@
 // This file is forked from https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/790e18f1733e71debc7608aed98ace654ac76a60/cmd/telemetrygen/internal/common/package_test.go,
 // which is licensed under Apache-2 and Copyright The OpenTelemetry Authors.
 //
-// It modifies the original implementation to remove unnecessary files,
-// and to accept a configurable logger.
+// This file does not contain significant modifications.
 
 package common
 
