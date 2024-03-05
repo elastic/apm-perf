@@ -100,9 +100,9 @@ type Config struct {
 	// events using the event handler.
 	IgnoreErrors bool
 
-	// ForceShutdown when set to true, will keep the handler running
+	// RunForever when set to true, will keep the handler running
 	// until a signal is received to stop it.
-	ForceShutdown bool
+	RunForever bool
 
 	// Writer writes replayable events to buffer.
 	Writer EventWriter
@@ -267,7 +267,7 @@ func (h *Handler) SendBatchesInLoop(ctx context.Context) error {
 			return ctx.Err()
 		default:
 			if _, err := h.sendBatches(ctx, &s); err != nil {
-				if h.config.ForceShutdown {
+				if h.config.RunForever {
 					h.logger.Error("failed to send batch of events", zap.Error(err))
 					continue
 				}

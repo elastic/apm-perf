@@ -26,7 +26,7 @@ type RunOptions struct {
 	BypassProxy   bool
 	Loglevel      string
 	IgnoreErrors  bool
-	ForceShutdown bool
+	RunForever    bool
 }
 
 func (opts *RunOptions) toRunnerConfig() (*soaktest.RunnerConfig, error) {
@@ -49,7 +49,7 @@ func (opts *RunOptions) toRunnerConfig() (*soaktest.RunnerConfig, error) {
 		APIKeys:       apiKeys,
 		BypassProxy:   opts.BypassProxy,
 		IgnoreErrors:  opts.IgnoreErrors,
-		ForceShutdown: opts.ForceShutdown,
+		RunForever:    opts.RunForever,
 	}, nil
 }
 
@@ -88,7 +88,7 @@ func NewCmdRun() *cobra.Command {
 	cmd.Flags().BoolVar(&options.BypassProxy, "bypass-proxy", false, "Detach from proxy dependency and provide projectID via header. Useful when testing locally")
 	cmd.Flags().StringVar(&options.Loglevel, "log-level", "info", "Specify the log level to use when running this command. Supported values: debug, info, warn, error")
 	cmd.Flags().BoolVar(&options.IgnoreErrors, "ignore-errors", false, "Ignore HTTP errors while sending events")
-	cmd.Flags().BoolVar(&options.ForceShutdown, "force-shutdown", false, "Continue running the soak test until a signal is received to stop it")
+	cmd.Flags().BoolVar(&options.RunForever, "run-forever", false, "Continue running the soak test until a signal is received to stop it")
 	return cmd
 }
 

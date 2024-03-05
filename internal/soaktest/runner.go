@@ -36,9 +36,9 @@ type RunnerConfig struct {
 	APIKeys       map[string]string
 	BypassProxy   bool
 	IgnoreErrors  bool
-	// ForceShutdown when set to true, will keep the handler running
+	// RunForever when set to true, will keep the handler running
 	// until a signal is received to stop it.
-	ForceShutdown bool
+	RunForever bool
 }
 
 type Runner struct {
@@ -75,7 +75,7 @@ func NewRunner(config *RunnerConfig, logger *zap.Logger) (*Runner, error) {
 func (runner *Runner) Run(ctx context.Context) error {
 	// Apply graceful shutdown driven by SIGINT or SIGTERM
 	// in case the config is set.
-	if runner.config.ForceShutdown {
+	if runner.config.RunForever {
 		var cancel context.CancelFunc
 		ctx, cancel = signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)
 		defer cancel()
@@ -179,7 +179,7 @@ func getHandlerParams(runnerConfig *RunnerConfig, config ScenarioConfig) (loadge
 		APIKey:                    config.APIKey,
 		Token:                     runnerConfig.SecretToken,
 		IgnoreErrors:              runnerConfig.IgnoreErrors,
-		ForceShutdown:             runnerConfig.ForceShutdown,
+		RunForever:                runnerConfig.RunForever,
 		Limiter:                   loadgen.GetNewLimiter(burst, interval),
 		RewriteIDs:                true,
 		RewriteServiceNames:       config.RewriteServiceNames,
