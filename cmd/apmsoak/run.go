@@ -87,7 +87,7 @@ func NewCmdRun() *cobra.Command {
 	cmd.Flags().StringVar(&options.APIKeys, "api-keys", "", "API keys for managed service. Specify key value pairs as `project_id_1:my_api_key,project_id_2:my_key`")
 	cmd.Flags().BoolVar(&options.BypassProxy, "bypass-proxy", false, "Detach from proxy dependency and provide projectID via header. Useful when testing locally")
 	cmd.Flags().StringVar(&options.Loglevel, "log-level", "info", "Specify the log level to use when running this command. Supported values: debug, info, warn, error")
-	cmd.Flags().BoolVar(&options.IgnoreErrors, "ignore-errors", false, "Do not report as a failure HTTP responses with status code different than 200")
+	cmd.Flags().BoolVar(&options.IgnoreErrors, "ignore-errors", false, "Ignore HTTP errors while sending events")
 	cmd.Flags().BoolVar(&options.ForceShutdown, "force-shutdown", false, "Continue running the soak test until a signal is received to stop it")
 	return cmd
 }
