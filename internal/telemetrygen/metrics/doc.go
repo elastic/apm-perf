@@ -2,5 +2,5 @@
 // or more license agreements. Licensed under the Elastic License 2.0;
 // you may not use this file except in compliance with the Elastic License 2.0.
 
-// Package metrics is from https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/cmd/telemetrygen
+// Package metrics is from https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/cmd/telemetrygen/internal/metrics
 package metrics
