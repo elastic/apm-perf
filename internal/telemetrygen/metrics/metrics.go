@@ -5,7 +5,8 @@
 // This file is forked from https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/790e18f1733e71debc7608aed98ace654ac76a60/cmd/telemetrygen/internal/metrics/metrics.go,
 // which is licensed under Apache-2 and Copyright The OpenTelemetry Authors.
 //
-// This file does not contain significant modifications.
+// This original implementation is modified:
+// - Start function now only creates a logger when it is not already configured in cfg
 
 package metrics
 
