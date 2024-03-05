@@ -2,7 +2,7 @@
 // or more license agreements. Licensed under the Elastic License 2.0;
 // you may not use this file except in compliance with the Elastic License 2.0.
 
-// This file is forked from https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/cmd/telemetrygen/internal/common/config.go,
+// This file is forked from https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/790e18f1733e71debc7608aed98ace654ac76a60/cmd/telemetrygen/internal/common/config.go,
 // which is licensed under Apache-2 and Copyright The OpenTelemetry Authors.
 //
 // It modifies the original implementation to remove unnecessary files,
