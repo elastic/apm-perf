@@ -100,6 +100,10 @@ type Config struct {
 	// events using the event handler.
 	IgnoreErrors bool
 
+	// RunForever when set to true, will keep the handler running
+	// until a signal is received to stop it.
+	RunForever bool
+
 	// Writer writes replayable events to buffer.
 	Writer EventWriter
 
@@ -244,7 +248,7 @@ func New(logger *zap.Logger, config Config, ec EventCollector) (*Handler, error)
 }
 
 // SendBatchesInLoop will send events in loop, such that it can be used to warm up the remote APM Server,
-// by sending events until the context is cancelled or done channel is closed.
+// by sending events until the context is canceled.
 func (h *Handler) SendBatchesInLoop(ctx context.Context) error {
 	// state is created here because the total number of events in h.batches can be smaller than the burst
 	// and it can lead the sendBatches to finish its cycle without sending the desired burst number of events.
@@ -255,12 +259,18 @@ func (h *Handler) SendBatchesInLoop(ctx context.Context) error {
 		burst: h.config.Limiter.Burst(),
 	}
 
+	// Send events in batches and when getting an error restart from where
+	// we left.
 	for {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
 		default:
 			if _, err := h.sendBatches(ctx, &s); err != nil {
+				if h.config.RunForever {
+					h.logger.Error("failed to send batch of events", zap.Error(err))
+					continue
+				}
 				return err
 			}
 			// safeguard `s.sent` so that it doesn't exceed math.MaxInt
