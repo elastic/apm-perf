@@ -22,7 +22,7 @@ import (
 
 // events holds the current stored events.
 //
-//go:embed events/*.ndjson
+//go:embed events/*.ndjson events/*.jsonl
 var events embed.FS
 
 type EventHandlerParams struct {

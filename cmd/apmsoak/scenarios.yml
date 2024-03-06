@@ -28,3 +28,6 @@ scenarios:
     - event_rate: 10000/1s
       agent_name: apm-ruby
       agents_replicas: 3
+  apm-server-otlp:
+    - event_rate: 100/s
+      agent_name: otlp-traces
