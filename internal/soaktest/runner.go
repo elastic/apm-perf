@@ -97,7 +97,7 @@ func (runner *Runner) Run(ctx context.Context) error {
 			config.AgentsReplicas = 1
 		}
 		for i := 0; i < config.AgentsReplicas; i++ {
-			runner.logger.Debug(fmt.Sprintf("agent: %s, replica %d", config.AgentName, i))
+			runner.logger.Debug(fmt.Sprintf("agent: %s, replica %d, event-rate: %s", config.AgentName, i, config.EventRate))
 			g.Go(func() error {
 				rng := rand.New(rand.NewSource(rngseed))
 				return runAgent(gCtx, runner, config, rng)

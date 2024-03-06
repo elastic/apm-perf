@@ -18,13 +18,13 @@ scenarios:
   apm-server:
     - event_rate: 10000/1s
       agent_name: apm-go
-      agents_replicas: 3
+      agent_replicas: 3
     - event_rate: 10000/1s
       agent_name: apm-nodejs
-      agents_replicas: 3
+      agent_replicas: 3
     - event_rate: 10000/1s
       agent_name: apm-python
-      agents_replicas: 3
+      agent_replicas: 3
     - event_rate: 10000/1s
       agent_name: apm-ruby
-      agents_replicas: 3
+      agent_replicas: 3
