@@ -93,10 +93,10 @@ func (runner *Runner) Run(ctx context.Context) error {
 	for _, config := range runner.scenarioConfigs {
 		config := config
 		// when not specified, default to 1
-		if config.AgentsReplicas <= 0 {
-			config.AgentsReplicas = 1
+		if config.AgentReplicas <= 0 {
+			config.AgentReplicas = 1
 		}
-		for i := 0; i < config.AgentsReplicas; i++ {
+		for i := 0; i < config.AgentReplicas; i++ {
 			runner.logger.Debug(fmt.Sprintf("agent: %s, replica %d, event-rate: %s", config.AgentName, i, config.EventRate))
 			g.Go(func() error {
 				rng := rand.New(rand.NewSource(rngseed))
