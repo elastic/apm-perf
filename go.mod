@@ -9,7 +9,7 @@ require (
 	github.com/stretchr/testify v1.8.4
 	github.com/tidwall/gjson v1.17.0
 	github.com/tidwall/sjson v1.2.5
-	go.elastic.co/apm/v2 v2.4.5
+	go.elastic.co/apm/v2 v2.4.8
 	go.elastic.co/ecszap v1.0.2
 	go.elastic.co/fastjson v1.3.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.24.0
