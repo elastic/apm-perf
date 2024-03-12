@@ -6,7 +6,7 @@ require (
 	github.com/klauspost/compress v1.17.7
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/pflag v1.0.5
-	github.com/stretchr/testify v1.8.4
+	github.com/stretchr/testify v1.9.0
 	github.com/tidwall/gjson v1.17.1
 	github.com/tidwall/sjson v1.2.5
 	go.elastic.co/apm/v2 v2.4.8
