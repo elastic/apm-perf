@@ -3,7 +3,7 @@ module github.com/elastic/apm-perf
 go 1.21
 
 require (
-	github.com/klauspost/compress v1.17.1
+	github.com/klauspost/compress v1.17.7
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.8.4
