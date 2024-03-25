@@ -5,7 +5,7 @@
 // This file is forked from https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/790e18f1733e71debc7608aed98ace654ac76a60/cmd/telemetrygen/internal/metrics/worker.go,
 // which is licensed under Apache-2 and Copyright The OpenTelemetry Authors.
 //
-// This file does not contain significant modifications.
+// This file does not contain functional modifications.
 
 package metrics
 
