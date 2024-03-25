@@ -28,12 +28,12 @@ type ScenarioConfig struct {
 	// For OTLP agents this value bust be <otlp-traces|metrics|logs>, as
 	// the OTLP protocol uses different endpoints for different data types.
 	AgentName string `yaml:"agent_name"`
-	// AgentsReplicas is the number of different agents that this scenario
+	// AgentReplicas is the number of different agents that this scenario
 	// will emulate when generating data points.
-	AgentsReplicas int `yaml:"agent_replicas"`
+	AgentReplicas int `yaml:"agent_replicas"`
 	// EventRate represent the rate of events generated.
 	// Must be in the format <number of events>/<time>. <time> is parsed
-	// as a Go time value.
+	// as a Go time.Duration value.
 	// FIXME: improve comment
 	EventRate string `yaml:"event_rate"`
 	// Headers contains additional HTTP headers to attach to every data

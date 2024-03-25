@@ -2,7 +2,7 @@
 
 STATES_DIR=$(CURDIR)/.states
 DIST_DIR=$(CURDIR)/dist
-
+CONTAINER_IMAGE_BASE_REF="docker.elastic.co/observability-ci/apm-perf"
 MODULE_DEPS=$(sort $(shell go list -deps -tags=darwin,linux,windows -f "{{with .Module}}{{if not .Main}}{{.Path}}{{end}}{{end}}" ./...))
 
 all: test
@@ -34,7 +34,7 @@ build:
 
 .PHONY: test
 test: go.mod
-	go test -v ./...
+	go test -race -v ./...
 
 .PHONY: package
 package: BASE_IMAGE_VERSION=$$(cat .go-version)
@@ -43,7 +43,7 @@ package: COMMIT_SHA=$$(git rev-parse HEAD)
 package: CURRENT_TIME_ISO=$$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 package: CURRENT_TIME=$$(date +%s)
 package: IMAGE_ID=$${IMAGE_VERSION:-latest}-$(CURRENT_TIME)-$(COMMIT_SHA_SHORT)
-package: IMAGE_REF=docker.elastic.co/observability-ci/apm-perf:$(IMAGE_ID)
+package: IMAGE_REF=$(CONTAINER_IMAGE_BASE_REF):$(IMAGE_ID)
 package: PROJECT_URL=$$(go list -m all | head -1)
 package:
 	mkdir -p $(STATES_DIR)
@@ -67,6 +67,8 @@ sanitize:
 publish: IMAGE_REF=$$(cat "$(STATES_DIR)/image_ref")
 publish:
 	docker push $(IMAGE_REF)
+	docker tag $(IMAGE_REF) $(CONTAINER_IMAGE_BASE_REF):latest
+	docker push $(CONTAINER_IMAGE_BASE_REF):latest
 
 notice: NOTICE.txt
 NOTICE.txt: go.mod tools/go.mod

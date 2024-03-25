@@ -15,8 +15,10 @@ import (
 	"math/rand"
 	"net/url"
 	"os"
+	"os/signal"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"go.uber.org/zap"
@@ -33,6 +35,10 @@ type RunnerConfig struct {
 	SecretToken   string
 	APIKeys       map[string]string
 	BypassProxy   bool
+	IgnoreErrors  bool
+	// RunForever when set to true, will keep the handler running
+	// until a signal is received to stop it.
+	RunForever bool
 }
 
 type Runner struct {
@@ -67,6 +73,14 @@ func NewRunner(config *RunnerConfig, logger *zap.Logger) (*Runner, error) {
 }
 
 func (runner *Runner) Run(ctx context.Context) error {
+	// Apply graceful shutdown driven by SIGINT or SIGTERM
+	// in case the config is set.
+	if runner.config.RunForever {
+		var cancel context.CancelFunc
+		ctx, cancel = signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)
+		defer cancel()
+	}
+
 	g, gCtx := errgroup.WithContext(ctx)
 	// Create a Rand with the same seed for each agent, so we randomise their IDs consistently.
 	var rngseed int64
@@ -79,11 +93,11 @@ func (runner *Runner) Run(ctx context.Context) error {
 	for _, config := range runner.scenarioConfigs {
 		config := config
 		// when not specified, default to 1
-		if config.AgentsReplicas <= 0 {
-			config.AgentsReplicas = 1
+		if config.AgentReplicas <= 0 {
+			config.AgentReplicas = 1
 		}
-		for i := 0; i < config.AgentsReplicas; i++ {
-			runner.logger.Debug(fmt.Sprintf("agent: %s, replica %d", config.AgentName, i))
+		for i := 0; i < config.AgentReplicas; i++ {
+			runner.logger.Debug(fmt.Sprintf("agent: %s, replica %d, event-rate: %s", config.AgentName, i, config.EventRate))
 			g.Go(func() error {
 				rng := rand.New(rand.NewSource(rngseed))
 				return runAgent(gCtx, runner, config, rng)
@@ -164,6 +178,8 @@ func getHandlerParams(runnerConfig *RunnerConfig, config ScenarioConfig) (loadge
 		URL:                       serverURL.String(),
 		APIKey:                    config.APIKey,
 		Token:                     runnerConfig.SecretToken,
+		IgnoreErrors:              runnerConfig.IgnoreErrors,
+		RunForever:                runnerConfig.RunForever,
 		Limiter:                   loadgen.GetNewLimiter(burst, interval),
 		RewriteIDs:                true,
 		RewriteServiceNames:       config.RewriteServiceNames,
