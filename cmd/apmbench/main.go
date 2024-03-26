@@ -45,13 +45,15 @@ func main() {
 		extraMetrics,
 		resetStoreFunc,
 		Benchmark1000Transactions,
-		BenchmarkOTLPTraces,
 		BenchmarkAgentAll,
 		BenchmarkAgentGo,
 		BenchmarkAgentNodeJS,
 		BenchmarkAgentPython,
 		BenchmarkAgentRuby,
 		Benchmark10000AggregationGroups,
+		BenchmarkOTLPTraces,
+		BenchmarkOTLPLogs,
+		BenchmarkOTLPMetrics,
 	); err != nil {
 		logger.Fatal("failed to run benchmarks", zap.Error(err))
 	}
