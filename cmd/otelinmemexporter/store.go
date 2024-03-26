@@ -156,7 +156,9 @@ func (s *Store) Add(ld pmetric.Metrics) {
 }
 
 // GetAll returns all the aggregated values for all the configured
-// aggregation configs.
+// aggregation configs. If `GroupBy` is configured in the aggregation
+// config then the results are grouped based on the observed values
+// for the grouped by key. No grouping is identified by an empty key.
 func (s *Store) GetAll() map[string]map[string]float64 {
 	s.RLock()
 	defer s.RUnlock()
@@ -165,10 +167,10 @@ func (s *Store) GetAll() map[string]map[string]float64 {
 	for key, cfg := range s.keyM {
 		dpByGrp, ok := s.nums[key]
 		if !ok {
-			m[key][""] = 0
+			m[key] = map[string]float64{"": 0}
 			continue
 		}
-		m[key] = make(map[string]float64)
+		m[key] = make(map[string]float64, len(dpByGrp))
 		for grp, dp := range dpByGrp {
 			m[key][grp] = getByType(cfg.Type, dp)
 		}
@@ -177,6 +179,9 @@ func (s *Store) GetAll() map[string]map[string]float64 {
 }
 
 // Get returns the aggregated value of a configured aggregation config.
+// If `GroupBy` is configured in the aggregation config then the results
+// are grouped based on the observed values for the grouped by key. No
+// grouping is identified by an empty key.
 func (s *Store) Get(key string) (map[string]float64, error) {
 	s.RLock()
 	defer s.RUnlock()

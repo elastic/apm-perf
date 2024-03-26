@@ -265,6 +265,9 @@ func TestAdd(t *testing.T) {
 			require.NoError(t, err)
 
 			store.Add(tt.input)
+			// Assert GetAll
+			assert.NotPanics(t, func() { store.GetAll() })
+			// Assert if data is correctly handled
 			for i := 0; i < len(cfgs); i++ {
 				actual, err := store.Get(cfgs[i].Key)
 				assert.NoError(t, err)
