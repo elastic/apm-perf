@@ -8,6 +8,7 @@
 // This original implementation is modified:
 // - Start function now only creates a logger when it is not already configured in cfg
 // - Use the correct error in batch span processor error logging.
+// - Use WithBlocking instead of WithBatchTimeout in BatchSpanProcessor
 
 package traces
 
@@ -81,7 +82,7 @@ func Start(cfg *Config) error {
 
 	var ssp sdktrace.SpanProcessor
 	if cfg.Batch {
-		ssp = sdktrace.NewBatchSpanProcessor(exp, sdktrace.WithBatchTimeout(time.Second))
+		ssp = sdktrace.NewBatchSpanProcessor(exp, sdktrace.WithBlocking())
 		defer func() {
 			logger.Info("stop the batch span processor")
 			if tempError := ssp.Shutdown(context.Background()); tempError != nil {
