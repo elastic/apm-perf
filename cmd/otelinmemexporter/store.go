@@ -33,7 +33,7 @@ type Store struct {
 	sync.RWMutex
 	nameM map[string][]AggregationConfig // keys are metric names
 	keyM  map[string]*AggregationConfig
-	nums  map[string]pmetric.NumberDataPoint
+	nums  map[string]map[string]pmetric.NumberDataPoint
 
 	logger *zap.Logger
 }
@@ -65,6 +65,10 @@ type AggregationConfig struct {
 	// label values. Only one type is allowed for a specific
 	// combination of name and label values.
 	Type AggregationType `mapstructure:"aggregation_type"`
+
+	// GroupBy allows grouping the metrics by a specific key. An
+	// empty value for group by signifies no grouping.
+	GroupBy string `mapstructure:"group_by"`
 }
 
 // MarshalLogObject implements zapcore.ObjectMarshaler to allow adding
@@ -73,6 +77,7 @@ func (cfg *AggregationConfig) MarshalLogObject(enc zapcore.ObjectEncoder) error 
 	enc.AddString("name", cfg.Name)
 	enc.AddString("type", string(cfg.Type))
 	enc.AddString("key", cfg.Key)
+	enc.AddString("group_by", cfg.GroupBy)
 	enc.AddObject("label_values", zapcore.ObjectMarshalerFunc(
 		func(enc zapcore.ObjectEncoder) error {
 			for l, v := range cfg.MatchLabelValues {
@@ -112,11 +117,8 @@ func (cfg *AggregationConfig) isEqual(
 		return false
 	}
 	for k, v := range cfg.MatchLabelValues {
-		targetV, ok := attrs.Get(k)
-		if !ok {
-			targetV, ok = resAttrs.Get(k)
-		}
-		if !ok || v != targetV.AsString() {
+		targetV := getValueFromMaps(k, attrs, resAttrs)
+		if targetV.Type() == pcommon.ValueTypeEmpty || v != targetV.AsString() {
 			return false
 		}
 	}
@@ -154,38 +156,51 @@ func (s *Store) Add(ld pmetric.Metrics) {
 }
 
 // GetAll returns all the aggregated values for all the configured
-// aggregation configs.
-func (s *Store) GetAll() map[string]float64 {
+// aggregation configs. If `GroupBy` is configured in the aggregation
+// config then the results are grouped based on the observed values
+// for the grouped by key. No grouping is identified by an empty key.
+func (s *Store) GetAll() map[string]map[string]float64 {
 	s.RLock()
 	defer s.RUnlock()
 
-	m := make(map[string]float64, len(s.nums))
+	m := make(map[string]map[string]float64, len(s.nums))
 	for key, cfg := range s.keyM {
-		dp, ok := s.nums[key]
+		dpByGrp, ok := s.nums[key]
 		if !ok {
-			m[key] = 0
+			m[key] = map[string]float64{"": 0}
 			continue
 		}
-		m[key] = getByType(cfg.Type, dp)
+		m[key] = make(map[string]float64, len(dpByGrp))
+		for grp, dp := range dpByGrp {
+			m[key][grp] = getByType(cfg.Type, dp)
+		}
 	}
 	return m
 }
 
 // Get returns the aggregated value of a configured aggregation config.
-func (s *Store) Get(key string) (float64, error) {
+// If `GroupBy` is configured in the aggregation config then the results
+// are grouped based on the observed values for the grouped by key. No
+// grouping is identified by an empty key.
+func (s *Store) Get(key string) (map[string]float64, error) {
 	s.RLock()
 	defer s.RUnlock()
 
 	cfg, ok := s.keyM[key]
 	if !ok {
-		return 0, fmt.Errorf("key %s is not configured", key)
+		return nil, fmt.Errorf("key %s is not configured", key)
 	}
 
-	dp, ok := s.nums[key]
+	dpByGrp, ok := s.nums[key]
 	if !ok {
-		return 0, nil
+		return map[string]float64{"": 0}, nil
 	}
-	return getByType(cfg.Type, dp), nil
+
+	m := make(map[string]float64, len(dpByGrp))
+	for k, dp := range dpByGrp {
+		m[k] = getByType(cfg.Type, dp)
+	}
+	return m, nil
 }
 
 // Reset resets the store by deleting all cached data.
@@ -237,16 +252,21 @@ func (s *Store) mergeNumberDataPoints(
 	resAttrs pcommon.Map,
 ) {
 	if s.nums == nil {
-		s.nums = make(map[string]pmetric.NumberDataPoint)
+		s.nums = make(map[string]map[string]pmetric.NumberDataPoint)
 	}
 
 	for i := 0; i < from.Len(); i++ {
 		dp := from.At(i)
-		for _, cfg := range s.filterCfgs(name, dp.Attributes(), resAttrs) {
+		attrs := dp.Attributes()
+		for _, cfg := range s.filterCfgs(name, attrs, resAttrs) {
+			grp := getValueFromMaps(cfg.GroupBy, attrs, resAttrs).AsString()
 			if _, ok := s.nums[cfg.Key]; !ok {
-				s.nums[cfg.Key] = pmetric.NewNumberDataPoint()
+				s.nums[cfg.Key] = make(map[string]pmetric.NumberDataPoint)
 			}
-			to := s.nums[cfg.Key]
+			if _, ok := s.nums[cfg.Key][grp]; !ok {
+				s.nums[cfg.Key][grp] = pmetric.NewNumberDataPoint()
+			}
+			to := s.nums[cfg.Key][grp]
 			switch cfg.Type {
 			case Last:
 				to.SetDoubleValue(doubleValue(dp))
@@ -345,4 +365,14 @@ func doubleValue(dp pmetric.NumberDataPoint) float64 {
 		return float64(dp.IntValue())
 	}
 	return 0
+}
+
+func getValueFromMaps(key string, maps ...pcommon.Map) pcommon.Value {
+	for _, m := range maps {
+		v, ok := m.Get(key)
+		if ok {
+			return v
+		}
+	}
+	return pcommon.NewValueEmpty()
 }

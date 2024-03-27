@@ -14,8 +14,8 @@ import (
 )
 
 type store interface {
-	GetAll() map[string]float64
-	Get(string) (float64, error)
+	GetAll() map[string]map[string]float64
+	Get(string) (map[string]float64, error)
 	Reset()
 }
 
@@ -54,7 +54,7 @@ func (s *server) Start() {
 			}
 			return
 		}
-		if err := enc.Encode(map[string]float64{key: val}); err != nil {
+		if err := enc.Encode(map[string]map[string]float64{key: val}); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			s.logger.Warn("failed to encode response", zap.Error(err))
 		}

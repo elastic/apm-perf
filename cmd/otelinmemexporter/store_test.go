@@ -15,6 +15,8 @@ import (
 	"go.uber.org/zap"
 )
 
+const groupKey = "grp_key"
+
 func TestNewStore(t *testing.T) {
 	logger := zap.NewExample()
 	_, validCfg := getTestAggCfg()
@@ -108,7 +110,7 @@ func TestAdd(t *testing.T) {
 	for _, tt := range []struct {
 		name     string
 		input    pmetric.Metrics
-		expected []float64 // for each aggregation query 1 output
+		expected []map[string]float64 // for each aggregation query 1 output
 	}{
 		{
 			name: "no_config",
@@ -118,32 +120,48 @@ func TestAdd(t *testing.T) {
 				pmetric.MetricTypeGauge,
 				startTime, startTime,
 			).get(),
-			expected: []float64{0, 0, 0},
+			expected: []map[string]float64{
+				map[string]float64{"": 0},
+				map[string]float64{"": 0},
+				map[string]float64{"": 0},
+				map[string]float64{"": 0},
+				map[string]float64{"": 0},
+				map[string]float64{"": 0},
+			},
 		},
 		{
 			name: "filtered_input",
 			input: newMetrics(nil).
 				addMetric(
 					allMetricNames, 1.1,
-					map[string]string{"k_1": "v_1"},
+					map[string]string{"k_1": "v_1", groupKey: "grp1"},
 					pmetric.MetricTypeGauge,
 					startTime, startTime.Add(time.Second),
 				).
 				addMetric(
 					allMetricNames, 2.2,
-					map[string]string{"k_1": "v_1", "k_2": "v_2"},
+					map[string]string{"k_1": "v_1", "k_2": "v_2", groupKey: "grp1"},
 					pmetric.MetricTypeGauge,
 					startTime.Add(time.Second), startTime.Add(2*time.Second),
+				).
+				addMetric(
+					allMetricNames, 3.3,
+					map[string]string{"k_1": "v_1", "k_2": "v_2"},
+					pmetric.MetricTypeGauge,
+					startTime.Add(2*time.Second), startTime.Add(3*time.Second),
 				).get(),
-			expected: []float64{
-				2.2,  // last
-				3.3,  // sum
-				1.65, // rate
+			expected: []map[string]float64{
+				map[string]float64{"": 3.3},               // last
+				map[string]float64{"": 6.6},               // sum
+				map[string]float64{"": 2.2},               // rate
+				map[string]float64{"": 3.3, "grp1": 2.2},  // group_by last
+				map[string]float64{"": 3.3, "grp1": 3.3},  // group_by sum
+				map[string]float64{"": 3.3, "grp1": 1.65}, // group_by rate
 			},
 		},
 		{
 			name: "filtered_input_with_resource_attrs",
-			input: newMetrics(map[string]string{"k_1": "v_1", "k_2": "v_2"}).
+			input: newMetrics(map[string]string{"k_1": "v_1", "k_2": "v_2", groupKey: "grp1"}).
 				addMetric(
 					allMetricNames, 1.1,
 					nil,
@@ -156,15 +174,18 @@ func TestAdd(t *testing.T) {
 					pmetric.MetricTypeGauge,
 					startTime.Add(time.Second), startTime.Add(2*time.Second),
 				).get(),
-			expected: []float64{
-				2.2,  // last
-				3.3,  // sum
-				1.65, // rate
+			expected: []map[string]float64{
+				map[string]float64{"": 2.2},      // last
+				map[string]float64{"": 3.3},      // sum
+				map[string]float64{"": 1.65},     // rate
+				map[string]float64{"grp1": 2.2},  // group_by last
+				map[string]float64{"grp1": 3.3},  // group_by sum
+				map[string]float64{"grp1": 1.65}, // group_by rate
 			},
 		},
 		{
 			name: "unfiltered_input",
-			input: newMetrics(nil).
+			input: newMetrics(map[string]string{groupKey: "grp1"}).
 				// no labels
 				addMetric(
 					allMetricNames, 1.1,
@@ -193,7 +214,14 @@ func TestAdd(t *testing.T) {
 					pmetric.MetricTypeGauge,
 					startTime, startTime,
 				).get(),
-			expected: []float64{0, 0, 0},
+			expected: []map[string]float64{
+				map[string]float64{"": 0},
+				map[string]float64{"": 0},
+				map[string]float64{"": 0},
+				map[string]float64{"": 0},
+				map[string]float64{"": 0},
+				map[string]float64{"": 0},
+			},
 		},
 		{
 			name: "mixed_input",
@@ -206,20 +234,29 @@ func TestAdd(t *testing.T) {
 				).
 				addMetric(
 					allMetricNames, 2.2,
-					map[string]string{"k_2": "v_1"},
+					map[string]string{"k_2": "v_1", groupKey: "grp1"},
 					pmetric.MetricTypeGauge,
 					startTime, startTime.Add(time.Second),
 				).
 				addMetric(
 					allMetricNames, 3.3,
-					map[string]string{"k_1": "v_1"},
+					map[string]string{"k_1": "v_1", groupKey: "grp1"},
 					pmetric.MetricTypeGauge,
 					startTime.Add(time.Second), startTime.Add(2*time.Second),
+				).
+				addMetric(
+					allMetricNames, 4.4,
+					map[string]string{"k_1": "v_1", groupKey: "grp2"},
+					pmetric.MetricTypeGauge,
+					startTime.Add(2*time.Second), startTime.Add(4*time.Second),
 				).get(),
-			expected: []float64{
-				3.3, // last
-				4.4, // sum
-				2.2, // rate
+			expected: []map[string]float64{
+				map[string]float64{"": 4.4},                           // last
+				map[string]float64{"": 8.8},                           // sum
+				map[string]float64{"": 2.2},                           // rate
+				map[string]float64{"": 1.1, "grp1": 3.3, "grp2": 4.4}, // group_by last
+				map[string]float64{"": 1.1, "grp1": 3.3, "grp2": 4.4}, // group_by sum
+				map[string]float64{"": 1.1, "grp1": 3.3, "grp2": 2.2}, // group_by rate
 			},
 		},
 	} {
@@ -228,10 +265,15 @@ func TestAdd(t *testing.T) {
 			require.NoError(t, err)
 
 			store.Add(tt.input)
+			// Assert GetAll
+			assert.NotPanics(t, func() { store.GetAll() })
+			// Assert if data is correctly handled
 			for i := 0; i < len(cfgs); i++ {
 				actual, err := store.Get(cfgs[i].Key)
 				assert.NoError(t, err)
-				assert.InDelta(t, tt.expected[i], actual, 1e-9)
+				if assert.Equal(t, len(tt.expected[i]), len(actual)) {
+					assert.InDeltaMapValues(t, tt.expected[i], actual, 1e-9)
+				}
 			}
 		})
 	}
@@ -289,24 +331,54 @@ func getTestAggCfg() ([]string, []AggregationConfig) {
 			MatchLabelValues: map[string]string{
 				"k_1": "v_1",
 			},
-			Type: Last,
-			Key:  "k1",
+			Type:    Last,
+			Key:     "k1",
+			GroupBy: "",
 		},
 		{
 			Name: "test_sum",
 			MatchLabelValues: map[string]string{
 				"k_1": "v_1",
 			},
-			Type: Sum,
-			Key:  "k2",
+			Type:    Sum,
+			Key:     "k2",
+			GroupBy: "",
 		},
 		{
 			Name: "test_rate",
 			MatchLabelValues: map[string]string{
 				"k_1": "v_1",
 			},
-			Type: Rate,
-			Key:  "k3",
+			Type:    Rate,
+			Key:     "k3",
+			GroupBy: "",
+		},
+		{
+			Name: "test_last_groupby",
+			MatchLabelValues: map[string]string{
+				"k_1": "v_1",
+			},
+			Type:    Last,
+			Key:     "k4",
+			GroupBy: groupKey,
+		},
+		{
+			Name: "test_sum_groupby",
+			MatchLabelValues: map[string]string{
+				"k_1": "v_1",
+			},
+			Type:    Sum,
+			Key:     "k5",
+			GroupBy: groupKey,
+		},
+		{
+			Name: "test_rate_groupby",
+			MatchLabelValues: map[string]string{
+				"k_1": "v_1",
+			},
+			Type:    Rate,
+			Key:     "k6",
+			GroupBy: groupKey,
 		},
 	}
 
