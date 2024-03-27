@@ -95,8 +95,7 @@ func assertCleanupState(ctx context.Context, telemetry telemetry, logger *zap.Lo
 		// If no cleanup keys are specified then, as a best effort, sleep
 		// for a specific duration to ensure the pipelines have a chance to
 		// be fully consumed and metrics to be reported.
-		logger.Info("no cleanup keys specified, sleep for 1 minute before proceeding")
-		time.Sleep(time.Minute)
+		logger.Warn("no cleanup keys specified, benchmark results may get corrupted")
 		return nil
 	}
 
