@@ -48,7 +48,7 @@ package: PROJECT_URL=$$(go list -m all | head -1)
 package:
 	mkdir -p $(STATES_DIR)
 	echo "$(IMAGE_REF)" > "$(STATES_DIR)/image_ref"
-	docker buildx build \
+	docker build \
 		--build-arg base_image_version=$(BASE_IMAGE_VERSION) \
 		--build-arg commit_sha=$(COMMIT_SHA) \
 		--build-arg current_time=$(CURRENT_TIME_ISO) \

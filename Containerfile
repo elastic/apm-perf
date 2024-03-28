@@ -1,6 +1,8 @@
 # Base image for build
 ARG base_image_version=1.20.7
-FROM golang:${base_image_version} as builder
+FROM --platform=$BUILDPLATFORM golang:${base_image_version} as builder
+ARG TARGETARCH
+ARG TARGETOS
 
 # Switch workdir
 WORKDIR /opt/apm-perf
@@ -9,12 +11,15 @@ WORKDIR /opt/apm-perf
 COPY . .
 
 # Build 
+ENV GOOS=$TARGETOS
+ENV GOARCH=$TARGETARCH
+ENV CGO_ENABLED=0
 RUN \
   go mod download \
   && make build
 
-# Base image for build
-FROM debian:bookworm
+# Base image for final image
+FROM cgr.dev/chainguard/static
 
 # Arguments
 ARG commit_sha
@@ -36,18 +41,6 @@ LABEL \
 
 # Switch workdir
 WORKDIR /opt/apm-perf
-
-# Add minimal stuff
-RUN \
-  apt-get update > /dev/null \
-  && apt-get upgrade -y \
-  && apt-get install -y --no-install-recommends \
-    "apt-utils=*" \
-    "ca-certificates=*" \
-    "curl=*" \
-    "gnupg=*" \
-  && apt-get clean \
-  && rm -rf /var/lib/apt/lists/*
 
 # Copy files for apmsoak
 COPY --from=builder /opt/apm-perf/dist/apmsoak /usr/bin/apmsoak
