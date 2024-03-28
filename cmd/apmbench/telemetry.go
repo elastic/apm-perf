@@ -15,7 +15,7 @@ type telemetry struct {
 	endpoint string
 }
 
-func (t telemetry) GetAll() (map[string]float64, error) {
+func (t telemetry) GetAll() (map[string]map[string]float64, error) {
 	resp, err := http.Get(t.endpoint + "/")
 	if err != nil {
 		return nil, fmt.Errorf("failed to get telemetry data: %w", err)
@@ -24,11 +24,33 @@ func (t telemetry) GetAll() (map[string]float64, error) {
 
 	switch resp.StatusCode / 100 {
 	case 2:
-		m := make(map[string]float64)
+		m := make(map[string]map[string]float64)
 		if err := json.NewDecoder(resp.Body).Decode(&m); err != nil {
 			return nil, fmt.Errorf("failed to decode response body for getting telemetry data: %w", err)
 		}
 		return m, nil
+	default:
+		return nil, fmt.Errorf("unsuccessful response from benchmark telemetry server: %d", resp.StatusCode)
+	}
+}
+
+func (t telemetry) Get(key string) (map[string]float64, error) {
+	resp, err := http.Get(t.endpoint + "/" + key)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get telemetry data: %w", err)
+	}
+	defer resp.Body.Close()
+
+	switch resp.StatusCode / 100 {
+	case 2:
+		m := make(map[string]map[string]float64)
+		if err := json.NewDecoder(resp.Body).Decode(&m); err != nil {
+			return nil, fmt.Errorf("failed to decode response body for getting telemetry data: %w", err)
+		}
+		if len(m) != 1 {
+			return nil, fmt.Errorf("invalid result, expected only 1 value but found %d", len(m))
+		}
+		return m[key], nil
 	default:
 		return nil, fmt.Errorf("unsuccessful response from benchmark telemetry server: %d", resp.StatusCode)
 	}
