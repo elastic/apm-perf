@@ -1,5 +1,5 @@
 # Base image for build
-ARG base_image_version=1.20.7
+ARG base_image_version=1.22
 FROM golang:${base_image_version} as builder
 
 # Switch workdir
