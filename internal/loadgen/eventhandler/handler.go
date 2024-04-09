@@ -56,10 +56,9 @@ type event struct {
 //
 // It is safe to make concurrent calls to Handler methods.
 type Handler struct {
-	mu         sync.Mutex // guards config.Rand
-	config     Config
-	writerPool sync.Pool
-	logger     *zap.Logger
+	mu     sync.Mutex // guards config.Rand
+	config Config
+	logger *zap.Logger
 
 	batches      []batch
 	minTimestamp time.Time // across all batches
@@ -181,17 +180,6 @@ func New(logger *zap.Logger, config Config, ec EventCollector) (*Handler, error)
 	h := Handler{
 		logger: logger.Named("handler"),
 		config: config,
-		writerPool: sync.Pool{
-			New: func() any {
-				pw := &pooledWriter{}
-				zw, err := zlib.NewWriterLevel(&pw.buf, zlib.BestSpeed)
-				if err != nil {
-					logger.Panic(err.Error())
-				}
-				pw.Writer = zw
-				return pw
-			},
-		},
 	}
 
 	matches, err := fs.Glob(config.Storage, config.Path)
@@ -296,11 +284,6 @@ func (h *Handler) sendBatches(ctx context.Context, s *state) (int, error) {
 	h.mu.Unlock()
 	h.logger.Debug("got random bits for batch")
 
-	s.w = h.writerPool.Get().(*pooledWriter)
-	defer h.writerPool.Put(s.w)
-	defer s.w.Reset()
-	h.logger.Debug("got writer from pool")
-
 	baseTimestamp := time.Now().UTC()
 	h.logger.Debug("calculated base timestamp", zap.String("timestamp", baseTimestamp.String()))
 	for _, batch := range h.batches {
@@ -341,8 +324,10 @@ func (h *Handler) sendBatch(
 				n = capacity
 			}
 		}
+
+		writer := newEventWriter()
 		if err := h.config.Writer(h.config, h.minTimestamp,
-			s.w, batch{
+			writer, batch{
 				metadata: b.metadata,
 				events:   events[:n],
 			}, baseTimestamp, randomBits); err != nil {
@@ -350,24 +335,26 @@ func (h *Handler) sendBatch(
 		}
 		h.logger.Debug("wrote events to buffer")
 
-		if err := s.w.Close(); err != nil {
+		if err := writer.Close(); err != nil {
 			return err
 		}
 		h.logger.Debug("closed writer")
 
-		if err := h.config.Transport.SendEvents(ctx, &s.w.buf, h.config.IgnoreErrors); err != nil {
+		// Do not reuse `writer`: in error cases, SendEvents may return while the request body is
+		// still being transmitted by the HTTP library. Reusing `writer` could cause a panic due to
+		// concurrent reads & writes.
+		if err := h.config.Transport.SendEvents(ctx, &writer.buf, h.config.IgnoreErrors); err != nil {
 			return err
 		}
 		h.logger.Debug("sent events through transport")
 
-		s.w.Reset()
 		s.sent += n
 		events = events[n:]
 	}
 	return nil
 }
 
-func rewriteJSONObject(w *pooledWriter, object gjson.Result, f func(key, value gjson.Result) bool) {
+func rewriteJSONObject(w *eventWriter, object gjson.Result, f func(key, value gjson.Result) bool) {
 	w.rewriteBuf.RawByte('{')
 	first := true
 	object.ForEach(func(key, value gjson.Result) bool {
@@ -462,21 +449,26 @@ func randomizeASCII(out *bytes.Buffer, in string, randomBits uint64) {
 }
 
 type state struct {
-	w     *pooledWriter
 	burst int
 	sent  int
 }
 
-type pooledWriter struct {
+type eventWriter struct {
 	rewriteBuf fastjson.Writer
 	idBuf      bytes.Buffer
 	buf        bytes.Buffer
 	*zlib.Writer
 }
 
-func (pw *pooledWriter) Reset() {
-	pw.rewriteBuf.Reset()
-	pw.idBuf.Reset()
-	pw.buf.Reset()
-	pw.Writer.Reset(&pw.buf)
+func newEventWriter() *eventWriter {
+	w := &eventWriter{}
+	// Preallocate to minimize memory copies.
+	w.buf.Grow(2 * 1024 * 1024)
+	zw, err := zlib.NewWriterLevel(&w.buf, zlib.BestSpeed)
+	if err != nil {
+		// Happens only when compression level doesn't exist
+		panic(err.Error())
+	}
+	w.Writer = zw
+	return w
 }
