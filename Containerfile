@@ -7,6 +7,10 @@ FROM --platform=$BUILDPLATFORM golang:${base_image_version} as builder
 # Switch workdir
 WORKDIR /opt/apm-perf
 
+# Use dedicated layer for Go dependency, cached until they changes
+COPY go.mod go.sum ./
+RUN go mod download
+
 # Copy files
 COPY . .
 
