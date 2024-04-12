@@ -15,9 +15,11 @@ RUN go mod download
 COPY . .
 
 # Build 
-RUN \
-  go mod download \
-  && make build
+ARG TARGETOS TARGETARCH
+# Leverage mounts to cache relevant Go paths
+RUN --mount=type=cache,target=/root/.cache/go-build \
+  --mount=type=cache,target=/go/pkg \
+  GOOS=$TARGETOS GOARCH=$TARGETARCH make build
 
 # Base image for build
 FROM debian:bookworm
