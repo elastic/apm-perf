@@ -1,17 +1,25 @@
 # Base image for build
 ARG base_image_version=1.22
-FROM golang:${base_image_version} as builder
+# We are doing cross compilation, this speeds things up
+# https://www.docker.com/blog/faster-multi-platform-builds-dockerfile-cross-compilation-guide/
+FROM --platform=$BUILDPLATFORM golang:${base_image_version} as builder
 
 # Switch workdir
 WORKDIR /opt/apm-perf
+
+# Use dedicated layer for Go dependency, cached until they changes
+COPY go.mod go.sum ./
+RUN go mod download
 
 # Copy files
 COPY . .
 
 # Build 
-RUN \
-  go mod download \
-  && make build
+ARG TARGETOS TARGETARCH
+# Leverage mounts to cache relevant Go paths
+RUN --mount=type=cache,target=/root/.cache/go-build \
+  --mount=type=cache,target=/go/pkg \
+  GOOS=$TARGETOS GOARCH=$TARGETARCH make build
 
 # Base image for build
 FROM debian:bookworm
