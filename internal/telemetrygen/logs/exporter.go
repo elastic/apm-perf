@@ -28,7 +28,7 @@ type exporter interface {
 	export(plog.Logs) error
 }
 
-func newExporter(ctx context.Context, cfg *Config) (exporter, error) {
+func newExporter(cfg *Config) (exporter, error) {
 
 	// Exporter with HTTP
 	if cfg.UseHTTP {
@@ -52,7 +52,7 @@ func newExporter(ctx context.Context, cfg *Config) (exporter, error) {
 	var err error
 	var clientConn *grpc.ClientConn
 	if cfg.Insecure {
-		clientConn, err = grpc.DialContext(ctx, cfg.Endpoint(), grpc.WithTransportCredentials(insecure.NewCredentials()))
+		clientConn, err = grpc.NewClient(cfg.Endpoint(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 		if err != nil {
 			return nil, err
 		}
@@ -61,7 +61,7 @@ func newExporter(ctx context.Context, cfg *Config) (exporter, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to get TLS credentials: %w", err)
 		}
-		clientConn, err = grpc.DialContext(ctx, cfg.Endpoint(), grpc.WithTransportCredentials(creds))
+		clientConn, err = grpc.NewClient(cfg.Endpoint(), grpc.WithTransportCredentials(creds))
 		if err != nil {
 			return nil, err
 		}

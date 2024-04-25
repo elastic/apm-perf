@@ -11,9 +11,9 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-// writeAPMEvents writes to buffers in pooledWriter JSON formatted events that can be replayed.
+// writeAPMEvents writes to buffers in eventWriter JSON formatted events that can be replayed.
 // Implements EventWriter interface.
-func writeAPMEvents(config Config, minTimestamp time.Time, w *pooledWriter, b batch, baseTimestamp time.Time, randomBits uint64) error {
+func writeAPMEvents(config Config, minTimestamp time.Time, w *eventWriter, b batch, baseTimestamp time.Time, randomBits uint64) error {
 	rewriteAny := config.RewriteTimestamps ||
 		config.RewriteIDs ||
 		config.RewriteServiceNames ||

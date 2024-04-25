@@ -11,7 +11,6 @@
 package logs
 
 import (
-	"context"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -36,7 +35,7 @@ func Start(cfg *Config) error {
 		logger = newLogger
 	}
 
-	e, err := newExporter(context.Background(), cfg)
+	e, err := newExporter(cfg)
 	if err != nil {
 		return err
 	}

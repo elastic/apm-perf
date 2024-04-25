@@ -22,6 +22,14 @@ var cfg struct {
 	// Sorted list of agents count to be used for benchmarking
 	AgentsList                 []int
 	BenchmarkTelemetryEndpoint string
+	// CleanupKeys defines a list of telemetry keys that will be
+	// used to determine if a specific benchmark funciton has run
+	// to completion including draining of all associated data. The
+	// cleanup keys, if specified, must be returned by the benchmark
+	// telemetry endpoint. The metric associated with each key must
+	// go to zero on completion of a benchmark.
+	CleanupKeys []string
+	Debug       bool
 }
 
 func init() {
@@ -69,4 +77,19 @@ func init() {
 		},
 	)
 	flag.StringVar(&cfg.BenchmarkTelemetryEndpoint, "benchmark-telemetry-endpoint", "", "Telemetry endpoint that exposed benchmark telemetry data with reset capabilities")
+	flag.Func("cleanup-keys", "comma-separated `list` of metric keys returned by the telemetry endpoint to monitor cleanup status after a benchmark run",
+		func(raw string) error {
+			var keys []string
+			for _, val := range strings.Split(raw, ",") {
+				val = strings.TrimSpace(val)
+				if val == "" {
+					continue
+				}
+				keys = append(keys, val)
+			}
+			cfg.CleanupKeys = keys
+			return nil
+		},
+	)
+	flag.BoolVar(&cfg.Debug, "debug", false, "setup debug logging level")
 }
