@@ -7,7 +7,9 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
+	"sort"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -23,6 +25,7 @@ type RunOptions struct {
 	ServerURL     string
 	SecretToken   string
 	APIKeys       string
+	Headers       map[string]string
 	BypassProxy   bool
 	Loglevel      string
 	IgnoreErrors  bool
@@ -47,14 +50,44 @@ func (opts *RunOptions) toRunnerConfig() (*soaktest.RunnerConfig, error) {
 		ServerURL:     opts.ServerURL,
 		SecretToken:   opts.SecretToken,
 		APIKeys:       apiKeys,
+		Headers:       opts.Headers,
 		BypassProxy:   opts.BypassProxy,
 		IgnoreErrors:  opts.IgnoreErrors,
 		RunForever:    opts.RunForever,
 	}, nil
 }
 
+type headersFlag map[string]string
+
+func (f headersFlag) String() string {
+	keys := make([]string, 0, len(f))
+	for k := range f {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	for i, k := range keys {
+		keys[i] = fmt.Sprintf("%s=%s", k, f[k])
+	}
+	return strings.Join(keys, ",")
+}
+
+func (f headersFlag) Set(s string) error {
+	k, v, ok := strings.Cut(s, "=")
+	if !ok {
+		return fmt.Errorf("expected k=v, got %q", s)
+	}
+	f[k] = v
+	return nil
+}
+
+func (f headersFlag) Type() string {
+	return "k=v"
+}
+
 func NewCmdRun() *cobra.Command {
-	options := &RunOptions{}
+	options := &RunOptions{
+		Headers: make(map[string]string),
+	}
 	cmd := &cobra.Command{
 		Use:   "run",
 		Short: "Run apmsoak",
@@ -85,6 +118,7 @@ func NewCmdRun() *cobra.Command {
 	cmd.Flags().StringVarP(&options.ScenariosPath, "file", "f", "./scenarios.yml", "Path to scenarios file")
 	cmd.Flags().StringVar(&options.SecretToken, "secret-token", "", "Secret token for APM Server. Managed intake service doesn't support secret token")
 	cmd.Flags().StringVar(&options.APIKeys, "api-keys", "", "API keys for managed service. Specify key value pairs as `project_id_1:my_api_key,project_id_2:my_key`")
+	cmd.Flags().Var(headersFlag(options.Headers), "header", "Extra headers to send. <project_id> will be replaced in header values.")
 	cmd.Flags().BoolVar(&options.BypassProxy, "bypass-proxy", false, "Detach from proxy dependency and provide projectID via header. Useful when testing locally")
 	cmd.Flags().StringVar(&options.Loglevel, "log-level", "info", "Specify the log level to use when running this command. Supported values: debug, info, warn, error")
 	cmd.Flags().BoolVar(&options.IgnoreErrors, "ignore-errors", false, "Ignore HTTP errors while sending events")
