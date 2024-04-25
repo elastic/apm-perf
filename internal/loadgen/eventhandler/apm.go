@@ -55,6 +55,7 @@ func (t *APMTransport) SendEvents(ctx context.Context, r io.Reader, ignoreErrs b
 	// set it to `-1` just like the agents would.
 	req.ContentLength = -1
 	req.Header = t.intakeHeaders
+	req.Host = req.Header.Get("Host")
 	return t.sendEvents(req, r, ignoreErrs)
 }
 

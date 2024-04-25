@@ -34,6 +34,7 @@ type RunnerConfig struct {
 	ServerURL     string
 	SecretToken   string
 	APIKeys       map[string]string
+	Headers       map[string]string
 	BypassProxy   bool
 	IgnoreErrors  bool
 	// RunForever when set to true, will keep the handler running
@@ -136,10 +137,19 @@ func getHandlerParams(runnerConfig *RunnerConfig, config ScenarioConfig) (loadge
 	path := config.AgentName + "*.ndjson"
 
 	var params loadgen.EventHandlerParams
-	if config.Headers == nil {
-		config.Headers = make(map[string]string)
+
+	headers := make(map[string]string)
+	for k, v := range config.Headers {
+		headers[k] = v
 	}
-	config.Headers["X-Elastic-Project-Id"] = config.ProjectID
+	for k, v := range runnerConfig.Headers {
+		headers[k] = v
+	}
+	for k, v := range headers {
+		headers[k] = strings.Replace(v, "<project_id>", config.ProjectID, 1)
+	}
+	headers["X-Elastic-Project-Id"] = config.ProjectID
+
 	if config.ServerURL == "" {
 		config.ServerURL = runnerConfig.ServerURL
 	}
@@ -189,7 +199,7 @@ func getHandlerParams(runnerConfig *RunnerConfig, config ScenarioConfig) (loadge
 		RewriteTransactionNames:   config.RewriteTransactionNames,
 		RewriteTransactionTypes:   config.RewriteTransactionTypes,
 		RewriteTimestamps:         true,
-		Headers:                   config.Headers,
+		Headers:                   headers,
 
 		Protocol: protocol,
 		Datatype: datatype,
