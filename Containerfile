@@ -16,13 +16,17 @@ COPY . .
 
 # Build 
 ARG TARGETOS TARGETARCH
+ENV GOOS=$TARGETOS
+ENV GOARCH=$TARGETARCH
+ENV CGO_ENABLED=0
+
 # Leverage mounts to cache relevant Go paths
 RUN --mount=type=cache,target=/root/.cache/go-build \
-  --mount=type=cache,target=/go/pkg \
-  GOOS=$TARGETOS GOARCH=$TARGETARCH make build
+    --mount=type=cache,target=/go/pkg \
+    make build
 
-# Base image for build
-FROM debian:bookworm
+# Base image for final image
+FROM cgr.dev/chainguard/static
 
 # Arguments
 ARG commit_sha
@@ -44,18 +48,6 @@ LABEL \
 
 # Switch workdir
 WORKDIR /opt/apm-perf
-
-# Add minimal stuff
-RUN \
-  apt-get update > /dev/null \
-  && apt-get upgrade -y \
-  && apt-get install -y --no-install-recommends \
-    "apt-utils=*" \
-    "ca-certificates=*" \
-    "curl=*" \
-    "gnupg=*" \
-  && apt-get clean \
-  && rm -rf /var/lib/apt/lists/*
 
 # Copy files for apmsoak
 COPY --from=builder /opt/apm-perf/dist/apmsoak /usr/bin/apmsoak
