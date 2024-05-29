@@ -57,5 +57,8 @@ COPY ./cmd/apmsoak/scenarios.yml /opt/apm-perf/scenarios.yml
 # Copy files for apmbench
 COPY --from=builder /opt/apm-perf/dist/apmbench /usr/bin/apmbench
 
+# Copy files for apmtelemetrygen
+COPY --from=builder /opt/apm-perf/dist/apmtelemetrygen /usr/bin/apmtelemetrygen
+
 # Default to apmsoak, override to use apmbench
 CMD [ "/usr/bin/apmsoak" ]

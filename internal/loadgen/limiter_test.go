@@ -2,14 +2,14 @@
 // or more contributor license agreements. Licensed under the Elastic License 2.0;
 // you may not use this file except in compliance with the Elastic License 2.0.
 
-package soaktest
+package loadgen
 
 import (
 	"testing"
 	"time"
 )
 
-func Test_getEventRate(t *testing.T) {
+func TestParseEventRate(t *testing.T) {
 	tests := []struct {
 		name      string
 		eventRate string
@@ -63,16 +63,16 @@ func Test_getEventRate(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, got1, err := getEventRate(tt.eventRate)
+			got, got1, err := ParseEventRate(tt.eventRate)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("getEventRate() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("ParseEventRate() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if got != tt.burst {
-				t.Errorf("getEventRate() got = %v, want %v", got, tt.burst)
+				t.Errorf("ParseEventRate() got = %v, want %v", got, tt.burst)
 			}
 			if got1 != tt.rate {
-				t.Errorf("getEventRate() got1 = %v, want %v", got1, tt.rate)
+				t.Errorf("ParseEventRate() got1 = %v, want %v", got1, tt.rate)
 			}
 		})
 	}
