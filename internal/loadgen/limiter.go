@@ -5,6 +5,9 @@
 package loadgen
 
 import (
+	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
 	"golang.org/x/time/rate"
@@ -22,4 +25,33 @@ func GetNewLimiter(burst int, interval time.Duration) *rate.Limiter {
 	}
 	eps := float64(burst) / interval.Seconds()
 	return rate.NewLimiter(rate.Limit(eps), burst)
+}
+
+// ParseEventRate takes a string in the format of "burst/duration" and returns the burst,
+// and the duration, and an error if any. Burst is the number of events and duration is
+// the time period in which these events occur. If the string is not in the expected
+// format, an error is returned.
+func ParseEventRate(eventRate string) (int, time.Duration, error) {
+	before, after, ok := strings.Cut(eventRate, "/")
+	if !ok || before == "" || after == "" {
+		return 0, 0, fmt.Errorf("invalid rate %q, expected format burst/duration", eventRate)
+	}
+
+	burst, err := strconv.Atoi(before)
+	if err != nil {
+		return 0, 0, fmt.Errorf("invalid burst %s in event rate: %w", before, err)
+	}
+
+	if !(after[0] >= '0' && after[0] <= '9') {
+		after = "1" + after
+	}
+	interval, err := time.ParseDuration(after)
+	if err != nil {
+		return 0, 0, fmt.Errorf("invalid interval %q in event rate: %w", after, err)
+	}
+	if interval <= 0 {
+		return 0, 0, fmt.Errorf("invalid interval %q, must be positive", after)
+	}
+
+	return burst, interval, nil
 }

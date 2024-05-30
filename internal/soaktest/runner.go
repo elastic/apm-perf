@@ -16,10 +16,8 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
-	"strconv"
 	"strings"
 	"syscall"
-	"time"
 
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
@@ -162,7 +160,7 @@ func getHandlerParams(runnerConfig *RunnerConfig, config ScenarioConfig) (loadge
 		config.APIKey = runnerConfig.APIKeys[config.ProjectID]
 	}
 
-	burst, interval, err := getEventRate(config.EventRate)
+	burst, interval, err := loadgen.ParseEventRate(config.EventRate)
 	if err != nil {
 		return params, err
 	}
@@ -206,29 +204,4 @@ func getHandlerParams(runnerConfig *RunnerConfig, config ScenarioConfig) (loadge
 	}
 
 	return params, nil
-}
-
-func getEventRate(eventRate string) (int, time.Duration, error) {
-	before, after, ok := strings.Cut(eventRate, "/")
-	if !ok || before == "" || after == "" {
-		return 0, 0, fmt.Errorf("invalid rate %q, expected format burst/duration", eventRate)
-	}
-
-	burst, err := strconv.Atoi(before)
-	if err != nil {
-		return 0, 0, fmt.Errorf("invalid burst %s in event rate: %w", before, err)
-	}
-
-	if !(after[0] >= '0' && after[0] <= '9') {
-		after = "1" + after
-	}
-	interval, err := time.ParseDuration(after)
-	if err != nil {
-		return 0, 0, fmt.Errorf("invalid interval %q in event rate: %w", after, err)
-	}
-	if interval <= 0 {
-		return 0, 0, fmt.Errorf("invalid interval %q, must be positive", after)
-	}
-
-	return burst, interval, nil
 }

@@ -31,6 +31,7 @@ build:
 	mkdir -p $(DIST_DIR)
 	go build -ldflags "$(LDFLAGS)" -o $(DIST_DIR)/apmsoak cmd/apmsoak/*.go
 	go build -ldflags "$(LDFLAGS)" -o $(DIST_DIR)/apmbench cmd/apmbench/*.go
+	go build -ldflags "$(LDFLAGS)" -o $(DIST_DIR)/apmtelemetrygen cmd/apmtelemetrygen/*.go
 
 .PHONY: test
 test: go.mod
