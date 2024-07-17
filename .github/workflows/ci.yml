@@ -35,12 +35,12 @@ jobs:
       run: |
         go install github.com/goreleaser/goreleaser/v2@latest
         make build
-    - name: Archive production artifacts
+    - name: Archive artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: dist
+        name: dist/*
         path: |
-          dist
+          dist/*
 
   tests:
     runs-on: ubuntu-latest
