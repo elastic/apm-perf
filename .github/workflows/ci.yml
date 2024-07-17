@@ -23,7 +23,26 @@ jobs:
           exit 1
         fi
 
-  run-tests:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-go@v5
+      with:
+        go-version-file: go.mod
+        cache: true
+    - name: Build
+      run: |
+        go install github.com/goreleaser/goreleaser/v2@latest
+        make build
+    - name: Archive production artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: dist
+        path: |
+          dist
+
+  tests:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
