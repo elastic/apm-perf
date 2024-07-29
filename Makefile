@@ -23,15 +23,8 @@ clean:
 	rm -fr bin
 
 .PHONY: build
-build: COMMIT_SHA=$$(git rev-parse HEAD)
-build: CURRENT_TIME_ISO=$$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-build: LDFLAGS=-X 'github.com/elastic/apm-perf/internal/version.commitSha=$(COMMIT_SHA)'
-build: LDFLAGS+=-X 'github.com/elastic/apm-perf/internal/version.buildTime=$(CURRENT_TIME_ISO)'
 build:
-	mkdir -p $(DIST_DIR)
-	go build -ldflags "$(LDFLAGS)" -o $(DIST_DIR)/apmsoak cmd/apmsoak/*.go
-	go build -ldflags "$(LDFLAGS)" -o $(DIST_DIR)/apmbench cmd/apmbench/*.go
-	go build -ldflags "$(LDFLAGS)" -o $(DIST_DIR)/apmtelemetrygen cmd/apmtelemetrygen/*.go
+	goreleaser build --snapshot --clean
 
 .PHONY: test
 test: go.mod
