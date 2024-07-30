@@ -8,7 +8,7 @@ require (
 	github.com/spf13/cobra v1.8.1
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.9.0
-	github.com/tidwall/gjson v1.17.1
+	github.com/tidwall/gjson v1.17.2
 	github.com/tidwall/sjson v1.2.5
 	go.elastic.co/apm/v2 v2.6.0
 	go.elastic.co/ecszap v1.0.3
