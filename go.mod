@@ -1,6 +1,7 @@
 module github.com/elastic/apm-perf
 
 go 1.22
+toolchain go1.22.5
 
 require (
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
@@ -13,8 +14,8 @@ require (
 	go.elastic.co/apm/v2 v2.6.0
 	go.elastic.co/ecszap v1.0.3
 	go.elastic.co/fastjson v1.4.0
-	go.opentelemetry.io/collector/pdata v1.13.0
-	go.opentelemetry.io/collector/semconv v0.107.0
+	go.opentelemetry.io/collector/pdata v1.14.1
+	go.opentelemetry.io/collector/semconv v0.108.1
 	go.opentelemetry.io/otel v1.29.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v1.29.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp v1.29.0
