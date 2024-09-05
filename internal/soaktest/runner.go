@@ -15,9 +15,7 @@ import (
 	"math/rand"
 	"net/url"
 	"os"
-	"os/signal"
 	"strings"
-	"syscall"
 	"time"
 
 	"go.uber.org/zap"
@@ -74,14 +72,6 @@ func NewRunner(config *RunnerConfig, logger *zap.Logger) (*Runner, error) {
 }
 
 func (runner *Runner) Run(ctx context.Context) error {
-	// Apply graceful shutdown driven by SIGINT or SIGTERM
-	// in case the config is set.
-	if runner.config.RunForever {
-		var cancel context.CancelFunc
-		ctx, cancel = signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)
-		defer cancel()
-	}
-
 	if runner.config.RunDuration != 0 {
 		var cancel context.CancelFunc
 		ctx, cancel = context.WithCancel(ctx)
