@@ -18,6 +18,7 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
+	"time"
 
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
@@ -37,7 +38,8 @@ type RunnerConfig struct {
 	IgnoreErrors  bool
 	// RunForever when set to true, will keep the handler running
 	// until a signal is received to stop it.
-	RunForever bool
+	RunForever  bool
+	RunDuration time.Duration
 }
 
 type Runner struct {
@@ -78,6 +80,18 @@ func (runner *Runner) Run(ctx context.Context) error {
 		var cancel context.CancelFunc
 		ctx, cancel = signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)
 		defer cancel()
+	}
+
+	if runner.config.RunDuration != 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithCancel(ctx)
+		go func() {
+			select {
+			case <-ctx.Done():
+			case <-time.After(runner.config.RunDuration):
+			}
+			cancel()
+		}()
 	}
 
 	g, gCtx := errgroup.WithContext(ctx)
