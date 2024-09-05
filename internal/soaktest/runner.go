@@ -15,9 +15,7 @@ import (
 	"math/rand"
 	"net/url"
 	"os"
-	"os/signal"
 	"strings"
-	"syscall"
 
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
@@ -72,14 +70,6 @@ func NewRunner(config *RunnerConfig, logger *zap.Logger) (*Runner, error) {
 }
 
 func (runner *Runner) Run(ctx context.Context) error {
-	// Apply graceful shutdown driven by SIGINT or SIGTERM
-	// in case the config is set.
-	if runner.config.RunForever {
-		var cancel context.CancelFunc
-		ctx, cancel = signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)
-		defer cancel()
-	}
-
 	g, gCtx := errgroup.WithContext(ctx)
 	// Create a Rand with the same seed for each agent, so we randomise their IDs consistently.
 	var rngseed int64
