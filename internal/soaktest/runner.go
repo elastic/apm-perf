@@ -84,7 +84,7 @@ func (runner *Runner) Run(ctx context.Context) error {
 		}()
 	}
 
-  g, gCtx := errgroup.WithContext(ctx)
+	g, gCtx := errgroup.WithContext(ctx)
 	// Create a Rand with the same seed for each agent, so we randomise their IDs consistently.
 	var rngseed int64
 	err := binary.Read(cryptorand.Reader, binary.LittleEndian, &rngseed)
