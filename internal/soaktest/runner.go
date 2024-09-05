@@ -16,6 +16,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"time"
 
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
@@ -35,7 +36,8 @@ type RunnerConfig struct {
 	IgnoreErrors  bool
 	// RunForever when set to true, will keep the handler running
 	// until a signal is received to stop it.
-	RunForever bool
+	RunForever  bool
+	RunDuration time.Duration
 }
 
 type Runner struct {
@@ -70,7 +72,19 @@ func NewRunner(config *RunnerConfig, logger *zap.Logger) (*Runner, error) {
 }
 
 func (runner *Runner) Run(ctx context.Context) error {
-	g, gCtx := errgroup.WithContext(ctx)
+	if runner.config.RunDuration != 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithCancel(ctx)
+		go func() {
+			select {
+			case <-ctx.Done():
+			case <-time.After(runner.config.RunDuration):
+			}
+			cancel()
+		}()
+	}
+
+  g, gCtx := errgroup.WithContext(ctx)
 	// Create a Rand with the same seed for each agent, so we randomise their IDs consistently.
 	var rngseed int64
 	err := binary.Read(cryptorand.Reader, binary.LittleEndian, &rngseed)
