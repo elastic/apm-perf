@@ -86,14 +86,14 @@ func init() {
 	flag.BoolVar(
 		&Config.RewriteTimestamps,
 		"rewrite-timestamps",
-		false,
+		true,
 		"rewrite event timestamps every iteration, maintaining relative offsets",
 	)
 
 	flag.BoolVar(
 		&Config.RewriteIDs,
 		"rewrite-ids",
-		false,
+		true,
 		"rewrite event IDs every iteration, maintaining event relationships",
 	)
 	flag.Func("header",
