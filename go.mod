@@ -1,7 +1,6 @@
 module github.com/elastic/apm-perf
 
-go 1.22
-toolchain go1.22.5
+go 1.22.0
 
 require (
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
