@@ -10,15 +10,10 @@ WORKDIR /opt/apm-perf
 # Use dedicated layer for Go dependency, cached until they changes
 COPY go.mod go.sum ./
 RUN go mod download
+RUN go install github.com/goreleaser/goreleaser/v2@latest
 
 # Copy files
 COPY . .
-
-# Build 
-ARG TARGETOS TARGETARCH
-ENV GOOS=$TARGETOS
-ENV GOARCH=$TARGETARCH
-ENV CGO_ENABLED=0
 
 # Leverage mounts to cache relevant Go paths
 RUN --mount=type=cache,target=/root/.cache/go-build \
@@ -49,16 +44,19 @@ LABEL \
 # Switch workdir
 WORKDIR /opt/apm-perf
 
+# OS Details
+ARG TARGETOS TARGETARCH
+
 # Copy files for apmsoak
-COPY --from=builder /opt/apm-perf/dist/apmsoak /usr/bin/apmsoak
+COPY --from=builder /opt/apm-perf/dist/apmsoak-${TARGETOS}-${TARGETARCH} /usr/bin/apmsoak
 COPY ./internal/loadgen/events ./events
 COPY ./cmd/apmsoak/scenarios.yml /opt/apm-perf/scenarios.yml
 
 # Copy files for apmbench
-COPY --from=builder /opt/apm-perf/dist/apmbench /usr/bin/apmbench
+COPY --from=builder /opt/apm-perf/dist/apmbench-${TARGETOS}-${TARGETARCH} /usr/bin/apmbench
 
 # Copy files for apmtelemetrygen
-COPY --from=builder /opt/apm-perf/dist/apmtelemetrygen /usr/bin/apmtelemetrygen
+COPY --from=builder /opt/apm-perf/dist/apmtelemetrygen-${TARGETOS}-${TARGETARCH} /usr/bin/apmtelemetrygen
 
 # Default to apmsoak, override to use apmbench
 CMD [ "/usr/bin/apmsoak" ]
