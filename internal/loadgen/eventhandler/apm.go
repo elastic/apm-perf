@@ -89,10 +89,12 @@ func logResponseOutcome(logger *zap.Logger, res *http.Response) {
 	}
 	if res.StatusCode >= http.StatusBadRequest {
 		logger.Error("request failed",
-			zap.Int("status_code", res.StatusCode), zap.String("response", body.String()))
+			zap.Int("status_code", res.StatusCode), zap.String("response", body.String()),
+			zap.String("destination", res.Request.URL.String()))
 	} else {
 		logger.Debug("request completed",
-			zap.Int("status_code", res.StatusCode), zap.String("response", body.String()))
+			zap.Int("status_code", res.StatusCode), zap.String("response", body.String()),
+			zap.String("destination", res.Request.URL.String()))
 	}
 }
 
