@@ -11,6 +11,7 @@ import (
 	"os"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 	"go.elastic.co/ecszap"
@@ -30,6 +31,7 @@ type RunOptions struct {
 	Loglevel      string
 	IgnoreErrors  bool
 	RunForever    bool
+	RunDuration   time.Duration
 }
 
 func (opts *RunOptions) toRunnerConfig() (*soaktest.RunnerConfig, error) {
@@ -54,6 +56,7 @@ func (opts *RunOptions) toRunnerConfig() (*soaktest.RunnerConfig, error) {
 		BypassProxy:   opts.BypassProxy,
 		IgnoreErrors:  opts.IgnoreErrors,
 		RunForever:    opts.RunForever,
+		RunDuration:   opts.RunDuration,
 	}, nil
 }
 
@@ -123,6 +126,7 @@ func NewCmdRun() *cobra.Command {
 	cmd.Flags().StringVar(&options.Loglevel, "log-level", "info", "Specify the log level to use when running this command. Supported values: debug, info, warn, error")
 	cmd.Flags().BoolVar(&options.IgnoreErrors, "ignore-errors", false, "Ignore HTTP errors while sending events")
 	cmd.Flags().BoolVar(&options.RunForever, "run-forever", false, "Continue running the soak test until a signal is received to stop it")
+	cmd.Flags().DurationVar(&options.RunDuration, "duration", 0, "duration of the run")
 	return cmd
 }
 
