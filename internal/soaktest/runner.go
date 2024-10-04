@@ -20,6 +20,7 @@ import (
 	"syscall"
 
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 	"golang.org/x/sync/errgroup"
 	"gopkg.in/yaml.v3"
 
@@ -38,6 +39,26 @@ type RunnerConfig struct {
 	// RunForever when set to true, will keep the handler running
 	// until a signal is received to stop it.
 	RunForever bool
+}
+
+func (r RunnerConfig) MarshalLogObject(e zapcore.ObjectEncoder) (_ error) {
+	e.AddString("scenario", r.Scenario)
+	e.AddString("scenarios_path", r.ScenariosPath)
+	e.AddString("server_url", r.ServerURL)
+	e.AddString("secret_token", r.SecretToken)
+	for k, v := range r.APIKeys {
+		// add API keys but redact full value. This will retain project information and
+		// provide a hint of the key value.
+		zap.String(fmt.Sprintf("apikey[%s]", k), v[:4]+"...").AddTo(e)
+	}
+	for k, v := range r.Headers {
+		zap.String(fmt.Sprintf("headers[%s]", k), v).AddTo(e)
+	}
+	e.AddBool("bypass_proxy", r.BypassProxy)
+	e.AddBool("ignore_errors", r.IgnoreErrors)
+	e.AddBool("run_forever", r.RunForever)
+
+	return nil
 }
 
 type Runner struct {
