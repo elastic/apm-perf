@@ -87,14 +87,20 @@ func logResponseOutcome(logger *zap.Logger, res *http.Response) {
 	if _, err := body.ReadFrom(res.Body); err != nil {
 		logger.Error("cannot read body", zap.Error(err))
 	}
+
+	destination := "unknown"
+	if res.Request != nil {
+		destination = res.Request.URL.String()
+	}
+
 	if res.StatusCode >= http.StatusBadRequest {
 		logger.Error("request failed",
 			zap.Int("status_code", res.StatusCode), zap.String("response", body.String()),
-			zap.String("destination", res.Request.URL.String()))
+			zap.String("destination", destination))
 	} else {
 		logger.Debug("request completed",
 			zap.Int("status_code", res.StatusCode), zap.String("response", body.String()),
-			zap.String("destination", res.Request.URL.String()))
+			zap.String("destination", destination))
 	}
 }
 
