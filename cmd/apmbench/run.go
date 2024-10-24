@@ -44,7 +44,7 @@ func Run(
 	}
 
 	// Set `test.benchtime` flag based on the custom `benchtime` flag.
-	if err := flag.Set("test.benchtime", cfg.Benchtime.String()); err != nil {
+	if err := flag.Set("test.benchtime", cfg.Benchtime); err != nil {
 		return fmt.Errorf("failed to set test.benchtime flag: %w", err)
 	}
 
