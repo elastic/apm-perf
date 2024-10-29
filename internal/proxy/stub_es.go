@@ -86,6 +86,10 @@ func (h stubES) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	case "/":
 		_, _ = w.Write(h.info)
 		return
+	case "/.apm-agent-configuration/_search":
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{}`))
+		w.WriteHeader(http.StatusOK)
 	case "/_license":
 		_, _ = w.Write(h.license)
 		return
