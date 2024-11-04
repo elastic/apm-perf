@@ -56,7 +56,7 @@ func (r RunnerConfig) MarshalLogObject(e zapcore.ObjectEncoder) (_ error) {
 	e.AddString("scenario", r.Scenario)
 	e.AddString("scenarios_path", r.ScenariosPath)
 	e.AddString("server_url", r.ServerURL)
-	e.AddString("secret_token", r.SecretToken)
+	e.AddString("secret_token", redact(r.SecretToken))
 	for k, v := range r.APIKeys {
 		// add API keys but redact full value. This will retain project information and
 		// provide a hint of the key value.
