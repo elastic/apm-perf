@@ -41,6 +41,17 @@ type RunnerConfig struct {
 	RunForever bool
 }
 
+// redact redacts the passed string, keeping only the first 4
+// chars and appending -REDACTED to it.
+// It handles empty string by returning a fixed value: EMPTY.
+func redact(v string) string {
+	redacted := "EMPTY"
+	if v != "" {
+		redacted = v[:4] + "-REDACTED"
+	}
+	return redacted
+}
+
 func (r RunnerConfig) MarshalLogObject(e zapcore.ObjectEncoder) (_ error) {
 	e.AddString("scenario", r.Scenario)
 	e.AddString("scenarios_path", r.ScenariosPath)
@@ -49,7 +60,7 @@ func (r RunnerConfig) MarshalLogObject(e zapcore.ObjectEncoder) (_ error) {
 	for k, v := range r.APIKeys {
 		// add API keys but redact full value. This will retain project information and
 		// provide a hint of the key value.
-		zap.String(fmt.Sprintf("apikey[%s]", k), v[:4]+"...").AddTo(e)
+		zap.String(fmt.Sprintf("apikey[%s]", k), redact(v)).AddTo(e)
 	}
 	for k, v := range r.Headers {
 		zap.String(fmt.Sprintf("headers[%s]", k), v).AddTo(e)
