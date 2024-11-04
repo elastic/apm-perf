@@ -15,9 +15,8 @@ import (
 	"math/rand"
 	"net/url"
 	"os"
-	"os/signal"
 	"strings"
-	"syscall"
+	"time"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -38,7 +37,8 @@ type RunnerConfig struct {
 	IgnoreErrors  bool
 	// RunForever when set to true, will keep the handler running
 	// until a signal is received to stop it.
-	RunForever bool
+	RunForever  bool
+	RunDuration time.Duration
 }
 
 // redact redacts the passed string, keeping only the first 4
@@ -104,12 +104,16 @@ func NewRunner(config *RunnerConfig, logger *zap.Logger) (*Runner, error) {
 }
 
 func (runner *Runner) Run(ctx context.Context) error {
-	// Apply graceful shutdown driven by SIGINT or SIGTERM
-	// in case the config is set.
-	if runner.config.RunForever {
+	if runner.config.RunDuration != 0 {
 		var cancel context.CancelFunc
-		ctx, cancel = signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)
-		defer cancel()
+		ctx, cancel = context.WithCancel(ctx)
+		go func() {
+			select {
+			case <-ctx.Done():
+			case <-time.After(runner.config.RunDuration):
+			}
+			cancel()
+		}()
 	}
 
 	g, gCtx := errgroup.WithContext(ctx)
@@ -221,14 +225,14 @@ func getHandlerParams(runnerConfig *RunnerConfig, config ScenarioConfig) (loadge
 		IgnoreErrors:              runnerConfig.IgnoreErrors,
 		RunForever:                runnerConfig.RunForever,
 		Limiter:                   loadgen.GetNewLimiter(burst, interval),
-		RewriteIDs:                true,
+		RewriteIDs:                config.RewriteIDs,
 		RewriteServiceNames:       config.RewriteServiceNames,
 		RewriteServiceNodeNames:   config.RewriteServiceNodeNames,
 		RewriteServiceTargetNames: config.RewriteServiceTargetNames,
 		RewriteSpanNames:          config.RewriteSpanNames,
 		RewriteTransactionNames:   config.RewriteTransactionNames,
 		RewriteTransactionTypes:   config.RewriteTransactionTypes,
-		RewriteTimestamps:         true,
+		RewriteTimestamps:         config.RewriteTimestamps,
 		Headers:                   headers,
 
 		Protocol: protocol,
