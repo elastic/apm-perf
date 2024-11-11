@@ -17,7 +17,7 @@ import (
 
 func NewFactory() exporter.Factory {
 	return exporter.NewFactory(
-		componentID,
+		component.MustNewType(componentID),
 		createDefaultConfig,
 		exporter.WithMetrics(
 			createMetricsExporter,
@@ -34,7 +34,7 @@ func createDefaultConfig() component.Config {
 
 func createMetricsExporter(
 	ctx context.Context,
-	settings exporter.CreateSettings,
+	settings exporter.Settings,
 	rawCfg component.Config,
 ) (exporter.Metrics, error) {
 	cfg := rawCfg.(*Config)
@@ -49,13 +49,13 @@ func createMetricsExporter(
 	newServer(store, cfg.Server.Endpoint, logger).Start()
 
 	exp := new(*cfg, store, logger)
-	return exporterhelper.NewMetricsExporter(
+	return exporterhelper.NewMetrics(
 		ctx, settings, cfg,
 		exp.consumeMetrics,
 		exporterhelper.WithCapabilities(consumer.Capabilities{MutatesData: false}),
 		// Disable Timeout/RetryOnFailure and SendingQueue
-		exporterhelper.WithTimeout(exporterhelper.TimeoutSettings{Timeout: 0}),
+		exporterhelper.WithTimeout(exporterhelper.TimeoutConfig{Timeout: 0}),
 		exporterhelper.WithRetry(configretry.BackOffConfig{Enabled: false}),
-		exporterhelper.WithQueue(exporterhelper.QueueSettings{Enabled: false}),
+		exporterhelper.WithQueue(exporterhelper.QueueConfig{Enabled: false}),
 	)
 }
