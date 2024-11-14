@@ -132,7 +132,7 @@ func newRunCmd() *cobra.Command {
 	cmd.Flags().StringVar(&options.ServerURL, "server-url", "", "Server URL (default http://127.0.0.1:8200)")
 	cmd.Flags().StringVar(&options.SecretToken, "secret-token", "", "Secret token for APM Server. Managed intake service doesn't support secret token")
 	cmd.Flags().StringVar(&options.APIKey, "api-key", "", "API key to use for authentication")
-	cmd.Flags().StringVar(&options.Loglevel, "log-level", "info", "Specify the log level to use when running this command. Supported values: debug, info, warn, error")
+	cmd.Flags().StringVar(&options.Loglevel, "log-level", "debug", "Specify the log level to use when running this command. Supported values: debug, info, warn, error")
 	cmd.Flags().StringVar(&options.Protocol, "protocol", "apm/http", "Specify the protocol to use when sending events. Supported values: apm/http, otlp/http")
 	cmd.Flags().StringVar(&options.Datatype, "data-type", "any", "Specify the data type to use when sending events. Supported values: any, logs, metrics, traces")
 	cmd.Flags().StringVar(&options.EventRate, "event-rate", "0/s", "Must be in the format <number of events>/<time>. <time> is parsed")
