@@ -333,11 +333,15 @@ func (h *Handler) sendBatch(
 			}, baseTimestamp, randomBits); err != nil {
 			return err
 		}
-		h.logger.Debug("wrote events to buffer")
 
 		if err := writer.Close(); err != nil {
 			return err
 		}
+		h.logger.Debug("wrote events to buffer",
+			zap.Int("bytes.uncompressed", writer.written),
+			zap.Int("bytes.compressed", writer.buf.Len()),
+		)
+
 		h.logger.Debug("closed writer")
 
 		// Do not reuse `writer`: in error cases, SendEvents may return while the request body is
@@ -458,10 +462,11 @@ type eventWriter struct {
 	idBuf      bytes.Buffer
 	buf        bytes.Buffer
 	*zlib.Writer
+	written int
 }
 
 func newEventWriter() *eventWriter {
-	w := &eventWriter{}
+	var w eventWriter
 	// Preallocate to minimize memory copies.
 	w.buf.Grow(2 * 1024 * 1024)
 	zw, err := zlib.NewWriterLevel(&w.buf, zlib.BestSpeed)
@@ -470,5 +475,11 @@ func newEventWriter() *eventWriter {
 		panic(err.Error())
 	}
 	w.Writer = zw
-	return w
+	return &w
+}
+
+func (w *eventWriter) Write(p []byte) (n int, err error) {
+	w.written += len(p)
+	n, err = w.Writer.Write(p)
+	return
 }

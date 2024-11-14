@@ -56,10 +56,10 @@ func (t *APMTransport) SendEvents(ctx context.Context, r io.Reader, ignoreErrs b
 	req.ContentLength = -1
 	req.Header = t.intakeHeaders
 	req.Host = req.Header.Get("Host")
-	return t.sendEvents(req, r, ignoreErrs)
+	return t.sendEvents(req, ignoreErrs)
 }
 
-func (t *APMTransport) sendEvents(req *http.Request, r io.Reader, ignoreErrs bool) error {
+func (t *APMTransport) sendEvents(req *http.Request, ignoreErrs bool) error {
 	res, err := t.client.Do(req)
 	if err != nil {
 		return err
