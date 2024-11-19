@@ -13,8 +13,8 @@ require (
 	go.elastic.co/apm/v2 v2.6.2
 	go.elastic.co/ecszap v1.0.3
 	go.elastic.co/fastjson v1.4.0
-	go.opentelemetry.io/collector/pdata v1.19.0
-	go.opentelemetry.io/collector/semconv v0.113.0
+	go.opentelemetry.io/collector/pdata v1.20.0
+	go.opentelemetry.io/collector/semconv v0.114.0
 	go.opentelemetry.io/otel v1.32.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v1.32.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp v1.32.0
