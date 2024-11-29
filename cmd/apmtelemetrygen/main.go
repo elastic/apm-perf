@@ -138,6 +138,7 @@ func newRunCmd() *cobra.Command {
 	cmd.Flags().StringVar(&options.EventRate, "event-rate", "0/s", "Must be in the format <number of events>/<time>. <time> is parsed")
 	cmd.Flags().IntVar(&options.Iterations, "iterations", 1, "The number of times to replay the canned data for")
 	cmd.Flags().BoolVar(&options.IgnoreErrors, "ignore-errors", false, "Ignore HTTP errors while sending events")
+	cmd.Flags().BoolVar(&options.EnableRewrites, "do-rewrites", true, "Enable or disable rewriting IDs and timestamps of stored events. When disabled the will replay stored events without any modification. This removes any variance in output.")
 	return &cmd
 }
 
@@ -152,6 +153,12 @@ type runOptions struct {
 	EventRate    string
 	Iterations   int
 	IgnoreErrors bool
+	// Specific if to rewrite IDs and Timestamps.
+	// This allows replaying the data with no variance at all. Note that
+	// IDs and Timestamps are fixed size fields, so even if the content
+	// change the overall output quantity does not. Removing variance
+	// can help troubleshooting issues.
+	EnableRewrites bool
 }
 
 func (opts *runOptions) toEventHandlerParams(logger *zap.Logger) (loadgen.EventHandlerParams, error) {
@@ -160,7 +167,7 @@ func (opts *runOptions) toEventHandlerParams(logger *zap.Logger) (loadgen.EventH
 		return loadgen.EventHandlerParams{}, err
 	}
 
-	return loadgen.EventHandlerParams{
+	ehp := loadgen.EventHandlerParams{
 		Logger:       logger,
 		Path:         "apm*.ndjson",
 		URL:          opts.ServerURL,
@@ -172,10 +179,14 @@ func (opts *runOptions) toEventHandlerParams(logger *zap.Logger) (loadgen.EventH
 		Datatype:     opts.Datatype,
 		Limiter:      loadgen.GetNewLimiter(burst, interval),
 		Rand:         rand.New(rand.NewSource(time.Now().UnixNano())),
+	}
 
-		RewriteIDs:        true,
-		RewriteTimestamps: true,
-	}, nil
+	if opts.EnableRewrites {
+		ehp.RewriteIDs = true
+		ehp.RewriteTimestamps = true
+	}
+
+	return ehp, nil
 }
 
 func getLogger(logLevel string) *zap.Logger {
