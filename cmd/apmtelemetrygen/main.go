@@ -138,6 +138,8 @@ func newRunCmd() *cobra.Command {
 	cmd.Flags().StringVar(&options.EventRate, "event-rate", "0/s", "Must be in the format <number of events>/<time>. <time> is parsed")
 	cmd.Flags().IntVar(&options.Iterations, "iterations", 1, "The number of times to replay the canned data for")
 	cmd.Flags().BoolVar(&options.IgnoreErrors, "ignore-errors", false, "Ignore HTTP errors while sending events")
+	cmd.Flags().BoolVar(&options.RewriteIDs, "rewrite-ids", true, "Enable or disable rewriting IDs of stored events in ouput.")
+	cmd.Flags().BoolVar(&options.RewriteTimestamps, "rewrite-timestamps", true, "Enable or disable rewriting timestamps of stored events in ouput.")
 	return &cmd
 }
 
@@ -152,6 +154,14 @@ type runOptions struct {
 	EventRate    string
 	Iterations   int
 	IgnoreErrors bool
+	// Specific if to rewrite IDs in stored events.
+	// This allows replaying the data with no variance on event IDs.
+	// Useful for troubleshooting.
+	RewriteIDs bool
+	// Specific if to rewrite timestamps in stored events.
+	// This allows replaying the data with no variance on event timestamps.
+	// Useful for troubleshooting.
+	RewriteTimestamps bool
 }
 
 func (opts *runOptions) toEventHandlerParams(logger *zap.Logger) (loadgen.EventHandlerParams, error) {
@@ -173,8 +183,8 @@ func (opts *runOptions) toEventHandlerParams(logger *zap.Logger) (loadgen.EventH
 		Limiter:      loadgen.GetNewLimiter(burst, interval),
 		Rand:         rand.New(rand.NewSource(time.Now().UnixNano())),
 
-		RewriteIDs:        true,
-		RewriteTimestamps: true,
+		RewriteIDs:        opts.RewriteIDs,
+		RewriteTimestamps: opts.RewriteTimestamps,
 	}, nil
 }
 
