@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the license.
 
-// telemetrygen package provides an easy way to generate
+// Package telemetrygen provides an easy way to generate
 // dummy APM events from a corpus of canned events.
 // Is a public package that is expected to be used outside
 // of this module, as such backward compatibility rules
