@@ -13,12 +13,13 @@ import (
 )
 
 func TestGeneration(t *testing.T) {
-	srv, m := newTestServer(t, testServerConfig{http.StatusServiceUnavailable})
+	srv, m := newTestServer(t)
 
 	cfg := telemetrygen.DefaultConfig()
 	cfg.Secure = false
 
 	u, err := url.Parse(srv.URL)
+	require.NoError(t, err)
 	cfg.ServerURL = u
 
 	cfg.EventRate.Set("1000/s")
@@ -31,14 +32,7 @@ func TestGeneration(t *testing.T) {
 	require.Greater(t, m.Load(), int32(0))
 }
 
-type testServerConfig struct {
-	responseStatus int
-}
-type metrics struct {
-	Received *atomic.Int32
-}
-
-func newTestServer(t *testing.T, cfg testServerConfig) (*httptest.Server, *atomic.Int32) {
+func newTestServer(t *testing.T) (*httptest.Server, *atomic.Int32) {
 	t.Helper()
 
 	mux := http.NewServeMux()
@@ -47,7 +41,6 @@ func newTestServer(t *testing.T, cfg testServerConfig) (*httptest.Server, *atomi
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		requestsReceived.Add(1)
 		w.Write([]byte("ok"))
-		return
 	})
 
 	srv := httptest.NewServer(mux)
