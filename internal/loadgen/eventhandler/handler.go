@@ -288,7 +288,7 @@ func (h *Handler) sendBatches(ctx context.Context, s *state) (int, error) {
 	h.logger.Debug("calculated base timestamp", zap.String("timestamp", baseTimestamp.String()))
 	for _, batch := range h.batches {
 		if err := h.sendBatch(ctx, s, batch, baseTimestamp, randomBits); err != nil {
-			return s.sent, err
+			return s.sent, fmt.Errorf("cannot send batch: %w", err)
 		}
 	}
 	return s.sent, nil
@@ -311,7 +311,7 @@ func (h *Handler) sendBatch(
 			if mod == 0 {
 				// We're starting a new iteration, so wait to send a burst.
 				if err := h.config.Limiter.WaitN(ctx, s.burst); err != nil {
-					return err
+					return fmt.Errorf("cannot wait for limiter to allow burst: %w", err)
 				}
 			}
 			// Send as many events of the batch as we can, up to the
@@ -331,11 +331,11 @@ func (h *Handler) sendBatch(
 				metadata: b.metadata,
 				events:   events[:n],
 			}, baseTimestamp, randomBits); err != nil {
-			return err
+			return fmt.Errorf("cannot write events: %w", err)
 		}
 
 		if err := writer.Close(); err != nil {
-			return err
+			return fmt.Errorf("cannot close writer: %w", err)
 		}
 		h.logger.Debug("wrote events to buffer",
 			zap.Int("bytes.uncompressed", writer.written),
@@ -348,7 +348,7 @@ func (h *Handler) sendBatch(
 		// still being transmitted by the HTTP library. Reusing `writer` could cause a panic due to
 		// concurrent reads & writes.
 		if err := h.config.Transport.SendEvents(ctx, &writer.buf, h.config.IgnoreErrors); err != nil {
-			return err
+			return fmt.Errorf("cannot send events through transport: %w", err)
 		}
 		h.logger.Debug("sent events through transport")
 
