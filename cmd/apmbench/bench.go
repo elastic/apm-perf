@@ -6,6 +6,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
 	"strings"
@@ -149,11 +150,15 @@ func benchmarkAgent(b *testing.B, l *rate.Limiter, expr string) {
 	h := newEventHandler(b, expr, l)
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			_, err := h.SendBatches(context.Background())
-			if err != nil {
-				// panicing ensures that the error is reported
-				// see: https://github.com/golang/go/issues/32066
-				panic(fmt.Sprintf("failed to send batches: %+v", err))
+			if _, err := h.SendBatches(context.Background()); err != nil {
+				// NOTE(marclop): we are ignoring the context.DeadlineExceeded error
+				// because we are not interested in the error itself, but in the
+				// performance of the agent. Other errors are still reported.
+				if !errors.Is(err, context.DeadlineExceeded) {
+					// panicing ensures that the error is reported
+					// see: https://github.com/golang/go/issues/32066
+					panic(fmt.Sprintf("failed to send batches: %+v", err))
+				}
 			}
 		}
 	})
