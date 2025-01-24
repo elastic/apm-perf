@@ -75,11 +75,11 @@ func runAgent(ctx context.Context, l *zap.Logger, expr string, limiter *rate.Lim
 		Protocol:                  "apm/http",
 	})
 	if err != nil {
-		return err
+		return fmt.Errorf("cannot create event handler: %w", err)
 	}
 
 	if _, err := handler.SendBatches(ctx); err != nil {
-		return err
+		return fmt.Errorf("cannot send batches: %w", err)
 	}
 
 	return nil
