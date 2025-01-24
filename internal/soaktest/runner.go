@@ -44,9 +44,12 @@ type RunnerConfig struct {
 // redact redacts the passed string, keeping only the first 4
 // chars and appending -REDACTED to it.
 // It handles empty string by returning a fixed value: EMPTY.
+// If the string has less than 4 characters returns EMPTY; as
+// this function is expected to be run on secrets, we don't
+// expect any string smaller than 4 characters.
 func redact(v string) string {
 	redacted := "EMPTY"
-	if v != "" {
+	if v != "" && len(v) >= 4 {
 		redacted = v[:4] + "-REDACTED"
 	}
 	return redacted
