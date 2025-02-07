@@ -15,7 +15,7 @@ import (
 	"go.uber.org/zap/zapcore"
 	"golang.org/x/time/rate"
 
-	"github.com/elastic/apm-perf/internal/loadgen/eventhandler"
+	"github.com/elastic/apm-perf/loadgen/eventhandler"
 
 	"go.elastic.co/apm/v2/transport"
 )

@@ -17,8 +17,8 @@ import (
 	"go.elastic.co/apm/v2/stacktrace"
 	"golang.org/x/time/rate"
 
-	"github.com/elastic/apm-perf/internal/loadgen"
-	loadgencfg "github.com/elastic/apm-perf/internal/loadgen/config"
+	"github.com/elastic/apm-perf/loadgen"
+	loadgencfg "github.com/elastic/apm-perf/loadgen/config"
 )
 
 const benchmarkFuncPrefix = "Benchmark"

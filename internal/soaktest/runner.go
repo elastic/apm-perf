@@ -22,7 +22,7 @@ import (
 	"golang.org/x/sync/errgroup"
 	"gopkg.in/yaml.v3"
 
-	"github.com/elastic/apm-perf/internal/loadgen"
+	"github.com/elastic/apm-perf/loadgen"
 )
 
 type RunnerConfig struct {

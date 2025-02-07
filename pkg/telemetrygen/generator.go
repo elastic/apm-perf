@@ -13,7 +13,7 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/elastic/apm-perf/internal/loadgen"
+	"github.com/elastic/apm-perf/loadgen"
 
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/time/rate"

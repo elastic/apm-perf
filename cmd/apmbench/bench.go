@@ -18,9 +18,9 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/time/rate"
 
-	"github.com/elastic/apm-perf/internal/loadgen"
-	loadgencfg "github.com/elastic/apm-perf/internal/loadgen/config"
-	"github.com/elastic/apm-perf/internal/loadgen/eventhandler"
+	"github.com/elastic/apm-perf/loadgen"
+	loadgencfg "github.com/elastic/apm-perf/loadgen/config"
+	"github.com/elastic/apm-perf/loadgen/eventhandler"
 )
 
 func Benchmark1000Transactions(b *testing.B, l *rate.Limiter) {
