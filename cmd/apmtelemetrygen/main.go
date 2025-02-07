@@ -24,8 +24,8 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 
-	"github.com/elastic/apm-perf/internal/loadgen"
 	"github.com/elastic/apm-perf/internal/version"
+	"github.com/elastic/apm-perf/loadgen"
 )
 
 const envVarPrefix = "ELASTIC_APM_"
