@@ -7,7 +7,6 @@ package otelinmemexporter
 import (
 	"context"
 	"fmt"
-
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/config/configretry"
 	"go.opentelemetry.io/collector/consumer"
@@ -48,7 +47,7 @@ func createMetricsExporter(
 	// Start http server
 	newServer(store, cfg.Server.Endpoint, logger).Start()
 
-	exp := new(*cfg, store, logger)
+	exp := newInMemExporter(*cfg, store, logger)
 	return exporterhelper.NewMetrics(
 		ctx, settings, cfg,
 		exp.consumeMetrics,

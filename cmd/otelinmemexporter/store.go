@@ -25,7 +25,7 @@ const (
 	Rate AggregationType = "rate"
 )
 
-// Store is a in-memory data store for telemetry data. Data
+// Store is an in-memory data store for telemetry data. Data
 // exported from the in-memory exporter will be aggregated
 // in the Store and queried from the store. Store only stores
 // a specfic set of entries specified during creation.
