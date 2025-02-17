@@ -26,8 +26,9 @@ const (
 )
 
 type (
-	metricNameToConfigs map[string][]AggregationConfig
-	keyToConfig         map[string]*AggregationConfig
+	metricNameToConfigs       map[string][]AggregationConfig
+	keyToConfig               map[string]*AggregationConfig
+	keyToGroupToMetric[T any] map[string]map[string]T
 )
 
 // Store is an in-memory data store for telemetry data. Data
@@ -38,8 +39,8 @@ type Store struct {
 	sync.RWMutex
 	nameM metricNameToConfigs
 	keyM  keyToConfig
-	nums  map[string]map[string]pmetric.NumberDataPoint
-	hists map[string]map[string]pmetric.Histogram
+	nums  keyToGroupToMetric[pmetric.NumberDataPoint]
+	hists keyToGroupToMetric[map[histogramDPHash]pmetric.HistogramDataPoint]
 
 	logger *zap.Logger
 }
@@ -247,6 +248,16 @@ func (s *Store) add(m pmetric.Metric, resAttrs pcommon.Map) {
 			return
 		}
 		s.mergeNumberDataPoints(m.Name(), m.Sum().DataPoints(), resAttrs)
+	case pmetric.MetricTypeHistogram:
+		if m.Histogram().AggregationTemporality() == pmetric.AggregationTemporalityCumulative {
+			s.logger.Warn(
+				"unexpected, all cumulative temporality should be converted to delta",
+				zap.String("name", m.Name()),
+				zap.String("type", m.Type().String()),
+			)
+			return
+		}
+		s.mergeHistogramDataPoints(m.Name(), m.Histogram().DataPoints(), resAttrs)
 	default:
 		s.logger.Warn(
 			"metric type not implemented",
@@ -268,14 +279,7 @@ func (s *Store) mergeNumberDataPoints(
 		dp := from.At(i)
 		attrs := dp.Attributes()
 		for _, cfg := range s.filterCfgs(name, attrs, resAttrs) {
-			grp := getValueFromMaps(cfg.GroupBy, attrs, resAttrs).AsString()
-			if _, ok := s.nums[cfg.Key]; !ok {
-				s.nums[cfg.Key] = make(map[string]pmetric.NumberDataPoint)
-			}
-			if _, ok := s.nums[cfg.Key][grp]; !ok {
-				s.nums[cfg.Key][grp] = pmetric.NewNumberDataPoint()
-			}
-			to := s.nums[cfg.Key][grp]
+			to := getMergeTo(s.nums, pmetric.NewNumberDataPoint, cfg, attrs, resAttrs)
 			switch cfg.Type {
 			case Last:
 				to.SetDoubleValue(doubleValue(dp))
@@ -304,6 +308,77 @@ func (s *Store) mergeNumberDataPoints(
 			}
 		}
 	}
+}
+
+func (s *Store) mergeHistogramDataPoints(
+	name string,
+	from pmetric.HistogramDataPointSlice,
+	resAttrs pcommon.Map,
+) {
+	if s.hists == nil {
+		s.hists = make(keyToGroupToMetric[map[histogramDPHash]pmetric.HistogramDataPoint])
+	}
+
+	for i := 0; i < from.Len(); i++ {
+		fromDP := from.At(i)
+		if fromDP.Count() == 0 {
+			// Skip histogram data points with no population
+			continue
+		}
+
+		attrs := fromDP.Attributes()
+		for _, cfg := range s.filterCfgs(name, attrs, resAttrs) {
+			m := getMergeTo(s.hists, newHistogramDPMap, cfg, attrs, resAttrs)
+			dpHash := hashHistogramDataPoint(fromDP)
+			toDP, exist := m[dpHash]
+			if !exist {
+				// Create new data point in map if it doesn't exist
+				toDP = pmetric.NewHistogramDataPoint()
+				m[dpHash] = toDP
+			}
+
+			toDP.SetCount(toDP.Count() + fromDP.Count())
+			toDP.SetSum(toDP.Sum() + fromDP.Sum())
+			// Overwrite min if lower
+			if toDP.HasMin() && toDP.Min() > fromDP.Min() {
+				toDP.SetMin(fromDP.Min())
+			}
+			// Overwrite max if higher
+			if toDP.HasMax() && toDP.Max() < fromDP.Max() {
+				toDP.SetMax(fromDP.Max())
+			}
+			// Merge buckets
+			bucketCounts := toDP.BucketCounts()
+			for b := 0; b < fromDP.BucketCounts().Len(); b++ {
+				bucketCounts.SetAt(b, bucketCounts.At(b)+fromDP.BucketCounts().At(b))
+			}
+			fromDP.Exemplars().MoveAndAppendTo(toDP.Exemplars())
+			// Overwrite start timestamp if lower
+			if fromDP.StartTimestamp() < toDP.StartTimestamp() {
+				toDP.SetStartTimestamp(fromDP.StartTimestamp())
+			}
+		}
+	}
+}
+
+func newHistogramDPMap() map[histogramDPHash]pmetric.HistogramDataPoint {
+	return make(map[histogramDPHash]pmetric.HistogramDataPoint)
+}
+
+func getMergeTo[T any](
+	m keyToGroupToMetric[T],
+	initFn func() T,
+	cfg AggregationConfig,
+	attrs, resAttrs pcommon.Map,
+) T {
+	grp := getValueFromMaps(cfg.GroupBy, attrs, resAttrs).AsString()
+	if _, ok := m[cfg.Key]; !ok {
+		m[cfg.Key] = make(map[string]T)
+	}
+	if _, ok := m[cfg.Key][grp]; !ok {
+		m[cfg.Key][grp] = initFn()
+	}
+	return m[cfg.Key][grp]
 }
 
 func (s *Store) filterCfgs(
