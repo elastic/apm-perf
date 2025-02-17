@@ -25,7 +25,7 @@ var _ component.Config = (*Config)(nil)
 
 // Validate checks if the exporter configuration is valid
 func (cfg *Config) Validate() error {
-	if _, err := validateAggregationConfig(cfg.Aggregations); err != nil {
+	if _, _, err := groupAggregationConfigsByKeyAndName(cfg.Aggregations); err != nil {
 		return fmt.Errorf("failed to validate aggregation config: %w", err)
 	}
 	if cfg.Server.Endpoint == "" {

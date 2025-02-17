@@ -25,15 +25,21 @@ const (
 	Rate AggregationType = "rate"
 )
 
+type (
+	metricNameToConfigs map[string][]AggregationConfig
+	keyToConfig         map[string]*AggregationConfig
+)
+
 // Store is an in-memory data store for telemetry data. Data
 // exported from the in-memory exporter will be aggregated
 // in the Store and queried from the store. Store only stores
 // a specfic set of entries specified during creation.
 type Store struct {
 	sync.RWMutex
-	nameM map[string][]AggregationConfig // keys are metric names
-	keyM  map[string]*AggregationConfig
+	nameM metricNameToConfigs
+	keyM  keyToConfig
 	nums  map[string]map[string]pmetric.NumberDataPoint
+	hists map[string]map[string]pmetric.Histogram
 
 	logger *zap.Logger
 }
@@ -128,12 +134,15 @@ func (cfg *AggregationConfig) isEqual(
 // NewStore creates a new in memory metric store. Returns an
 // error if the provided config is invalid.
 func NewStore(aggs []AggregationConfig, logger *zap.Logger) (*Store, error) {
-	store, err := validateAggregationConfig(aggs)
+	keyM, nameM, err := groupAggregationConfigsByKeyAndName(aggs)
 	if err != nil {
 		return nil, err
 	}
-	store.logger = logger
-	return store, nil
+	return &Store{
+		keyM:   keyM,
+		nameM:  nameM,
+		logger: logger,
+	}, nil
 }
 
 // Add adds metrics to the store.
@@ -172,7 +181,7 @@ func (s *Store) GetAll() map[string]map[string]float64 {
 		}
 		m[key] = make(map[string]float64, len(dpByGrp))
 		for grp, dp := range dpByGrp {
-			m[key][grp] = getByType(cfg.Type, dp)
+			m[key][grp] = getNumByType(cfg.Type, dp)
 		}
 	}
 	return m
@@ -198,7 +207,7 @@ func (s *Store) Get(key string) (map[string]float64, error) {
 
 	m := make(map[string]float64, len(dpByGrp))
 	for k, dp := range dpByGrp {
-		m[k] = getByType(cfg.Type, dp)
+		m[k] = getNumByType(cfg.Type, dp)
 	}
 	return m, nil
 }
@@ -314,7 +323,7 @@ func (s *Store) filterCfgs(
 	return result
 }
 
-func getByType(typ AggregationType, dp pmetric.NumberDataPoint) float64 {
+func getNumByType(typ AggregationType, dp pmetric.NumberDataPoint) float64 {
 	switch typ {
 	case Rate:
 		if dp.DoubleValue() == 0 {
@@ -330,7 +339,7 @@ func getByType(typ AggregationType, dp pmetric.NumberDataPoint) float64 {
 	}
 }
 
-func validateAggregationConfig(src []AggregationConfig) (*Store, error) {
+func groupAggregationConfigsByKeyAndName(src []AggregationConfig) (keyToConfig, metricNameToConfigs, error) {
 	nameM := make(map[string][]AggregationConfig)
 	keyM := make(map[string]*AggregationConfig)
 	for i := range src {
@@ -339,22 +348,23 @@ func validateAggregationConfig(src []AggregationConfig) (*Store, error) {
 			for _, toCfg := range toCfgs {
 				if toCfg.isEqualIgnoringType(srcCfg) {
 					if toCfg.Type != srcCfg.Type {
-						return nil, fmt.Errorf("cannot record same metric with different types: %s", srcCfg.Name)
+						return nil, nil, fmt.Errorf(
+							"cannot record same metric with different types: %s", srcCfg.Name)
 					}
-					return nil, fmt.Errorf("duplicate config found: %s", srcCfg.Name)
+					return nil, nil, fmt.Errorf(
+						"duplicate config found: %s", srcCfg.Name)
 				}
 			}
 		}
 		if _, seen := keyM[srcCfg.Key]; seen {
-			return nil, fmt.Errorf("key should be unique, found duplicate: %s", srcCfg.Key)
+			return nil, nil, fmt.Errorf(
+				"key should be unique, found duplicate: %s", srcCfg.Key)
 		}
 		nameM[srcCfg.Name] = append(nameM[srcCfg.Name], srcCfg)
 		keyM[srcCfg.Key] = &srcCfg
 	}
-	return &Store{
-		nameM: nameM,
-		keyM:  keyM,
-	}, nil
+
+	return keyM, nameM, nil
 }
 
 func doubleValue(dp pmetric.NumberDataPoint) float64 {
