@@ -5,6 +5,7 @@
 package otelinmemexporter
 
 import (
+	"encoding/json"
 	"fmt"
 	"sync"
 	"time"
@@ -25,11 +26,52 @@ const (
 	Rate AggregationType = "rate"
 )
 
+type metric interface {
+	pmetric.NumberDataPoint | pmetric.HistogramDataPoint
+}
+
 type (
-	metricNameToConfigs       map[string][]AggregationConfig
-	keyToConfig               map[string]*AggregationConfig
-	keyToGroupToMetric[T any] map[string]map[string]T
+	metricNameToConfigs map[string][]AggregationConfig
+	keyToConfig         map[string]*AggregationConfig
+
+	keyToGroupToMetric[T metric] map[string]map[string]T
 )
+
+func (kgm keyToGroupToMetric[T]) MarshalJSON() ([]byte, error) {
+	res := map[string]map[string]string{}
+	marshaler := pmetric.JSONMarshaler{}
+	for key, groupToMetric := range kgm {
+		for group, mt := range groupToMetric {
+			if _, ok := res[key]; !ok {
+				res[key] = map[string]string{}
+			}
+
+			metrics := pmetric.NewMetrics()
+			resMetrics := metrics.ResourceMetrics().AppendEmpty()
+			scopeMetrics := resMetrics.ScopeMetrics().AppendEmpty()
+			smMetric := scopeMetrics.Metrics().AppendEmpty()
+
+			switch v := (any(mt)).(type) {
+			case pmetric.NumberDataPoint:
+				smMetric.SetEmptySum()
+				dp := smMetric.Sum().DataPoints().AppendEmpty()
+				v.CopyTo(dp)
+			case pmetric.HistogramDataPoint:
+				smMetric.SetEmptyHistogram()
+				dp := smMetric.Histogram().DataPoints().AppendEmpty()
+				v.CopyTo(dp)
+			}
+
+			b, err := marshaler.MarshalMetrics(metrics)
+			if err != nil {
+				return nil, err
+			}
+			res[key][group] = string(b)
+		}
+	}
+
+	return json.Marshal(res)
+}
 
 // Store is an in-memory data store for telemetry data. Data
 // exported from the in-memory exporter will be aggregated
@@ -40,7 +82,7 @@ type Store struct {
 	nameM metricNameToConfigs
 	keyM  keyToConfig
 	nums  keyToGroupToMetric[pmetric.NumberDataPoint]
-	hists keyToGroupToMetric[map[histogramDPHash]pmetric.HistogramDataPoint]
+	hists keyToGroupToMetric[pmetric.HistogramDataPoint]
 
 	logger *zap.Logger
 }
@@ -316,7 +358,7 @@ func (s *Store) mergeHistogramDataPoints(
 	resAttrs pcommon.Map,
 ) {
 	if s.hists == nil {
-		s.hists = make(keyToGroupToMetric[map[histogramDPHash]pmetric.HistogramDataPoint])
+		s.hists = make(keyToGroupToMetric[pmetric.HistogramDataPoint])
 	}
 
 	for i := 0; i < from.Len(); i++ {
@@ -328,57 +370,10 @@ func (s *Store) mergeHistogramDataPoints(
 
 		attrs := fromDP.Attributes()
 		for _, cfg := range s.filterCfgs(name, attrs, resAttrs) {
-			m := getMergeTo(s.hists, newHistogramDPMap, cfg, attrs, resAttrs)
-			dpHash := hashHistogramDataPoint(fromDP)
-			toDP, exist := m[dpHash]
-			if !exist {
-				// Create new data point in map if it doesn't exist
-				toDP = pmetric.NewHistogramDataPoint()
-				m[dpHash] = toDP
-			}
-
-			toDP.SetCount(toDP.Count() + fromDP.Count())
-			toDP.SetSum(toDP.Sum() + fromDP.Sum())
-			// Overwrite min if lower
-			if toDP.HasMin() && toDP.Min() > fromDP.Min() {
-				toDP.SetMin(fromDP.Min())
-			}
-			// Overwrite max if higher
-			if toDP.HasMax() && toDP.Max() < fromDP.Max() {
-				toDP.SetMax(fromDP.Max())
-			}
-			// Merge buckets
-			bucketCounts := toDP.BucketCounts()
-			for b := 0; b < fromDP.BucketCounts().Len(); b++ {
-				bucketCounts.SetAt(b, bucketCounts.At(b)+fromDP.BucketCounts().At(b))
-			}
-			fromDP.Exemplars().MoveAndAppendTo(toDP.Exemplars())
-			// Overwrite start timestamp if lower
-			if fromDP.StartTimestamp() < toDP.StartTimestamp() {
-				toDP.SetStartTimestamp(fromDP.StartTimestamp())
-			}
+			toDP := getMergeTo(s.hists, pmetric.NewHistogramDataPoint, cfg, attrs, resAttrs)
+			mergeHistogramDataPoint(fromDP, toDP)
 		}
 	}
-}
-
-func newHistogramDPMap() map[histogramDPHash]pmetric.HistogramDataPoint {
-	return make(map[histogramDPHash]pmetric.HistogramDataPoint)
-}
-
-func getMergeTo[T any](
-	m keyToGroupToMetric[T],
-	initFn func() T,
-	cfg AggregationConfig,
-	attrs, resAttrs pcommon.Map,
-) T {
-	grp := getValueFromMaps(cfg.GroupBy, attrs, resAttrs).AsString()
-	if _, ok := m[cfg.Key]; !ok {
-		m[cfg.Key] = make(map[string]T)
-	}
-	if _, ok := m[cfg.Key][grp]; !ok {
-		m[cfg.Key][grp] = initFn()
-	}
-	return m[cfg.Key][grp]
 }
 
 func (s *Store) filterCfgs(
@@ -396,6 +391,22 @@ func (s *Store) filterCfgs(
 		}
 	}
 	return result
+}
+
+func getMergeTo[T metric](
+	m keyToGroupToMetric[T],
+	initFn func() T,
+	cfg AggregationConfig,
+	attrs, resAttrs pcommon.Map,
+) T {
+	grp := getValueFromMaps(cfg.GroupBy, attrs, resAttrs).AsString()
+	if _, ok := m[cfg.Key]; !ok {
+		m[cfg.Key] = make(map[string]T)
+	}
+	if _, ok := m[cfg.Key][grp]; !ok {
+		m[cfg.Key][grp] = initFn()
+	}
+	return m[cfg.Key][grp]
 }
 
 func getNumByType(typ AggregationType, dp pmetric.NumberDataPoint) float64 {
