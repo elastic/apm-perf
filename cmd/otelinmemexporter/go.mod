@@ -1,7 +1,8 @@
 module github.com/elastic/apm-perf/cmd/otelinmemexporter
 
-go 1.22.0
-toolchain go1.23.2
+go 1.23.0
+
+toolchain go1.23.5
 
 require (
 	github.com/gorilla/mux v1.8.1
