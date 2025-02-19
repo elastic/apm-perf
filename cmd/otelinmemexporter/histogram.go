@@ -4,12 +4,34 @@ import (
 	"math"
 	"slices"
 
+	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 )
 
 type explicitBucket struct {
 	UpperBound float64 // inclusive
-	Count      uint    // beware that this will be converted to float64 in calculations
+	Count      uint64  // beware that this will be converted to float64 in calculations
+}
+
+// explicitBucketsFromHistogramDataPoint extracts buckets from histogram data point.
+// The length of bucket counts in `dp` is assumed to be the length of explicit bounds plus one.
+// Violating this assumption will cause index-out-of-range panic.
+func explicitBucketsFromHistogramDataPoint(dp pmetric.HistogramDataPoint) []explicitBucket {
+	bucketCounts := dp.BucketCounts().AsRaw()
+	explicitBounds := dp.ExplicitBounds().AsRaw()
+	buckets := make([]explicitBucket, 0, len(bucketCounts))
+	for i, ub := range explicitBounds {
+		buckets = append(buckets, explicitBucket{
+			UpperBound: ub,
+			Count:      bucketCounts[i],
+		})
+	}
+
+	buckets = append(buckets, explicitBucket{
+		UpperBound: math.Inf(+1),
+		Count:      bucketCounts[len(bucketCounts)-1],
+	})
+	return buckets
 }
 
 // explicitBucketsQuantile calculates the quantile `q` based on the given buckets.
@@ -61,7 +83,7 @@ func explicitBucketsQuantile(q float64, buckets []explicitBucket) float64 {
 	}
 
 	// Check if there are any observations.
-	var observations uint
+	var observations uint64
 	for _, bucket := range buckets {
 		observations += bucket.Count
 	}
@@ -71,7 +93,7 @@ func explicitBucketsQuantile(q float64, buckets []explicitBucket) float64 {
 
 	// Find the bucket that the quantile falls into.
 	rank := q * float64(observations)
-	var countSoFar uint
+	var countSoFar uint64
 	bucketIdx := slices.IndexFunc(buckets, func(bucket explicitBucket) bool {
 		countSoFar += bucket.Count
 		// Compare using GTE instead of GT since upper bound is inclusive.
@@ -93,35 +115,66 @@ func explicitBucketsQuantile(q float64, buckets []explicitBucket) float64 {
 	return bucketStart + (bucketEnd-bucketStart)*bucketQuantile
 }
 
-func mergeHistogramDataPoint(from, to pmetric.HistogramDataPoint) {
+func explicitBoundsEqual(a, b pcommon.Float64Slice) bool {
+	if a.Len() != b.Len() {
+		return false
+	}
+	for i := 0; i < a.Len(); i++ {
+		if a.At(i) != b.At(i) {
+			return false
+		}
+	}
+	return true
+}
+
+// addHistogramDataPoint adds the data from histogram data point `from` into `to`.
+// This data includes:
+//   - count
+//   - sum
+//   - min (if `to` has min and `from` min is lower)
+//   - max (if `to` has max and `from` max is higher)
+//   - bucket counts (assumes that both data points have same explicit bounds)
+//   - exemplars
+//   - start timestamp (if `from` start timestamp is lower)
+//   - timestamp (if `from` timestamp is lower)
+//
+// Note: If both `from` and `to` does not have the same explicit bounds, `from` will simply
+// replace `to` instead of being added.
+func addHistogramDataPoint(from, to pmetric.HistogramDataPoint) {
 	if from.Count() == 0 {
-		// from is empty, do nothing
+		// `from` is empty, do nothing.
 		return
 	}
 
 	if to.Count() == 0 {
-		// to is new, simply copy over
+		// `to` is new, simply copy over
+		from.CopyTo(to)
+		return
+	}
+
+	if !explicitBoundsEqual(from.ExplicitBounds(), to.ExplicitBounds()) {
+		// Mismatched explicit bounds, replace observations since we can't simply merge.
 		from.CopyTo(to)
 		return
 	}
 
 	to.SetCount(to.Count() + from.Count())
 	to.SetSum(to.Sum() + from.Sum())
-	// Overwrite min if lower
+	// Overwrite min if lower.
 	if to.HasMin() && to.Min() > from.Min() {
 		to.SetMin(from.Min())
 	}
-	// Overwrite max if higher
+	// Overwrite max if higher.
 	if to.HasMax() && to.Max() < from.Max() {
 		to.SetMax(from.Max())
 	}
-	// Merge buckets
+	// Merge buckets.
 	bucketCounts := to.BucketCounts()
 	for b := 0; b < from.BucketCounts().Len(); b++ {
 		bucketCounts.SetAt(b, bucketCounts.At(b)+from.BucketCounts().At(b))
 	}
 	from.Exemplars().MoveAndAppendTo(to.Exemplars())
-	// Overwrite start timestamp if lower
+	// Overwrite start timestamp if lower.
 	if from.StartTimestamp() < to.StartTimestamp() {
 		to.SetStartTimestamp(from.StartTimestamp())
 	}

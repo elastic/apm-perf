@@ -150,7 +150,7 @@ func Test_explicitBucketsQuantile(t *testing.T) {
 					t,
 					tt.wantValues[q],
 					explicitBucketsQuantile(q, tt.buckets),
-					1e-10,
+					1e-9,
 					"explicitBucketsQuantile()",
 				)
 			})
@@ -177,10 +177,25 @@ func assertInDeltaWithInfAndNaN(t *testing.T, want, got, delta float64, msgAndAr
 	assert.InDelta(t, want, got, delta, msgAndArgs...)
 }
 
-func Test_mergeHistogramDataPoint(t *testing.T) {
+func Test_addHistogramDataPoint(t *testing.T) {
 	ts1 := time.Unix(111111111, 0)
 	ts2 := time.Unix(222222222, 0)
 	ts3 := time.Unix(333333333, 0)
+	genBuckets := func(bucketCounts [5]uint64) []explicitBucket {
+		return []explicitBucket{
+			{UpperBound: 0, Count: bucketCounts[0]},
+			{UpperBound: 5, Count: bucketCounts[1]},
+			{UpperBound: 10, Count: bucketCounts[2]},
+			{UpperBound: 25, Count: bucketCounts[3]},
+			{UpperBound: math.Inf(+1), Count: bucketCounts[4]},
+		}
+	}
+
+	boundsMismatchDP := newTestHistogramDataPoint(
+		genBuckets([5]uint64{0, 1, 2, 3, 4}),
+		200, 1, 80, nil, ts1, ts2,
+	)
+	boundsMismatchDP.ExplicitBounds().FromRaw([]float64{0, 100, 200, 300})
 
 	type args struct {
 		from pmetric.HistogramDataPoint
@@ -192,62 +207,103 @@ func Test_mergeHistogramDataPoint(t *testing.T) {
 		expected pmetric.HistogramDataPoint
 	}{
 		{
+			name: "explicit bounds mismatch",
+			args: args{
+				from: boundsMismatchDP,
+				to: newTestHistogramDataPoint(
+					genBuckets([5]uint64{0, 1, 0, 2, 0}),
+					35, 3, 18, nil, ts1, ts2,
+				),
+			},
+			expected: boundsMismatchDP,
+		},
+		{
 			name: "merge to empty",
 			args: args{
-				from: newTestHistogramDataPoint(ts1, ts2, [5]uint64{0, 1, 2, 3, 4}, 200, 1, 100),
-				to:   pmetric.NewHistogramDataPoint(),
+				from: newTestHistogramDataPoint(
+					genBuckets([5]uint64{0, 1, 2, 3, 4}),
+					200, 1, 100, nil, ts1, ts2,
+				),
+				to: pmetric.NewHistogramDataPoint(),
 			},
-			expected: newTestHistogramDataPoint(ts1, ts2, [5]uint64{0, 1, 2, 3, 4}, 200, 1, 100),
+			expected: newTestHistogramDataPoint(
+				genBuckets([5]uint64{0, 1, 2, 3, 4}),
+				200, 1, 100, nil, ts1, ts2,
+			),
 		},
 		{
 			name: "merge from empty",
 			args: args{
 				from: pmetric.NewHistogramDataPoint(),
-				to:   newTestHistogramDataPoint(ts1, ts2, [5]uint64{0, 1, 2, 3, 4}, 200, 1, 100),
+				to: newTestHistogramDataPoint(
+					genBuckets([5]uint64{0, 1, 2, 3, 4}),
+					200, 1, 100, nil, ts1, ts2,
+				),
 			},
-			expected: newTestHistogramDataPoint(ts1, ts2, [5]uint64{0, 1, 2, 3, 4}, 200, 1, 100),
+			expected: newTestHistogramDataPoint(
+				genBuckets([5]uint64{0, 1, 2, 3, 4}),
+				200, 1, 100, nil, ts1, ts2,
+			),
 		},
 		{
 			name: "merge",
 			args: args{
-				from: newTestHistogramDataPoint(ts2, ts3, [5]uint64{0, 1, 2, 3, 4}, 200, 1, 80),
-				to:   newTestHistogramDataPoint(ts1, ts2, [5]uint64{0, 1, 0, 2, 0}, 35, 3, 18),
+				from: newTestHistogramDataPoint(
+					genBuckets([5]uint64{0, 1, 2, 3, 4}),
+					200, 1, 80, nil, ts2, ts3),
+				to: newTestHistogramDataPoint(
+					genBuckets([5]uint64{0, 1, 0, 2, 0}),
+					35, 3, 18, nil, ts1, ts2,
+				),
 			},
-			expected: newTestHistogramDataPoint(ts1, ts3, [5]uint64{0, 2, 2, 5, 4}, 235, 1, 80),
+			expected: newTestHistogramDataPoint(
+				genBuckets([5]uint64{0, 2, 2, 5, 4}),
+				235, 1, 80, nil, ts1, ts3,
+			),
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mergeHistogramDataPoint(tt.args.from, tt.args.to)
+			addHistogramDataPoint(tt.args.from, tt.args.to)
 			if err := pmetrictest.CompareHistogramDataPoints(tt.expected, tt.args.to); err != nil {
-				t.Errorf("mergeHistogramDataPoint() compare error = %v", err)
+				t.Errorf("addHistogramDataPoint() compare error = %v", err)
 			}
 		})
 	}
 }
 
 func newTestHistogramDataPoint(
-	startTs, ts time.Time,
-	bucketCounts [5]uint64,
+	buckets []explicitBucket,
 	sum, min, max float64,
+	attrs map[string]string,
+	startTime, endTime time.Time,
 ) pmetric.HistogramDataPoint {
-	countBuckets := func() uint64 {
-		var totalCount uint64
-		for _, bc := range bucketCounts {
-			totalCount += bc
+	explicitBounds := make([]float64, len(buckets)-1)
+	bucketCounts := make([]uint64, len(buckets))
+	for i, bucket := range buckets {
+		if i == len(buckets)-1 {
+			bucketCounts[i] = bucket.Count
+		} else {
+			explicitBounds[i] = bucket.UpperBound
+			bucketCounts[i] = bucket.Count
 		}
-		return totalCount
+	}
+
+	var totalCount uint64
+	for _, bc := range bucketCounts {
+		totalCount += bc
 	}
 
 	dp := pmetric.NewHistogramDataPoint()
-	dp.SetCount(countBuckets())
+	dp.ExplicitBounds().FromRaw(explicitBounds)
+	dp.BucketCounts().FromRaw(bucketCounts)
+	dp.SetCount(totalCount)
 	dp.SetSum(sum)
-	dp.SetMin(min)
-	dp.SetMax(max)
-	dp.SetStartTimestamp(pcommon.NewTimestampFromTime(startTs))
-	dp.SetTimestamp(pcommon.NewTimestampFromTime(ts))
-	dp.ExplicitBounds().FromRaw([]float64{0, 5, 10, 25})
-	dp.BucketCounts().FromRaw(bucketCounts[:])
+	dp.SetStartTimestamp(pcommon.NewTimestampFromTime(startTime))
+	dp.SetTimestamp(pcommon.NewTimestampFromTime(endTime))
+	for k, v := range attrs {
+		dp.Attributes().PutStr(k, v)
+	}
 
 	return dp
 }

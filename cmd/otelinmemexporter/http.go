@@ -13,19 +13,19 @@ import (
 	"go.uber.org/zap"
 )
 
-type store interface {
+type telemetryStore interface {
 	GetAll() map[string]map[string]float64
 	Get(string) (map[string]float64, error)
 	Reset()
 }
 
 type server struct {
-	store    store
+	store    telemetryStore
 	endpoint string
 	logger   *zap.Logger
 }
 
-func newServer(store store, endpoint string, logger *zap.Logger) *server {
+func newServer(store telemetryStore, endpoint string, logger *zap.Logger) *server {
 	return &server{
 		store:    store,
 		endpoint: endpoint,
