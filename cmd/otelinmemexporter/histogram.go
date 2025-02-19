@@ -100,7 +100,7 @@ func explicitBucketsQuantile(q float64, buckets []explicitBucket) float64 {
 	var countSoFar uint64
 	bucketIdx := slices.IndexFunc(buckets, func(bucket explicitBucket) bool {
 		countSoFar += bucket.Count
-		// Compare using GTE instead of GT since upper bound is inclusive.
+		// Compare using `>=` instead of `>` since upper bound is inclusive.
 		return float64(countSoFar) >= rank
 	})
 
@@ -114,12 +114,21 @@ func explicitBucketsQuantile(q float64, buckets []explicitBucket) float64 {
 	// Interpolate to get quantile in bucket.
 	bucketStart := buckets[bucketIdx-1].UpperBound
 	bucketEnd := buckets[bucketIdx].UpperBound
-	count := buckets[bucketIdx].Count
-	bucketQuantile := (rank - float64(countSoFar-count)) / float64(count)
+	bucketCount := buckets[bucketIdx].Count
+	// How the bucket quantile is derived:
+	// ==|=======|=======|=======|=======|==
+	//   |       |       |       |       |
+	//   | b - 2 | b - 1 |   b   | b + 1 |
+	// ==|=======|=======|=======|=======|==
+	// ----------------------> rank
+	// --------------------------> countSoFar
+	//                   |-------> bucketCount
+	//                   |---> rank - (countSoFar - bucketCount)
+	bucketQuantile := (rank - float64(countSoFar-bucketCount)) / float64(bucketCount)
 	return bucketStart + (bucketEnd-bucketStart)*bucketQuantile
 }
 
-func explicitBoundsEqual(a, b pcommon.Float64Slice) bool {
+func float64SliceEqual(a, b pcommon.Float64Slice) bool {
 	if a.Len() != b.Len() {
 		return false
 	}
@@ -151,12 +160,12 @@ func addHistogramDataPoint(from, to pmetric.HistogramDataPoint) {
 	}
 
 	if to.Count() == 0 {
-		// `to` is new, simply copy over
+		// `to` is new, simply copy over.
 		from.CopyTo(to)
 		return
 	}
 
-	if !explicitBoundsEqual(from.ExplicitBounds(), to.ExplicitBounds()) {
+	if !float64SliceEqual(from.ExplicitBounds(), to.ExplicitBounds()) {
 		// Mismatched explicit bounds, replace observations since we can't simply merge.
 		from.CopyTo(to)
 		return
@@ -182,7 +191,7 @@ func addHistogramDataPoint(from, to pmetric.HistogramDataPoint) {
 	if from.StartTimestamp() < to.StartTimestamp() {
 		to.SetStartTimestamp(from.StartTimestamp())
 	}
-	// Overwrite timestamp if higher
+	// Overwrite timestamp if higher.
 	if from.Timestamp() > to.Timestamp() {
 		to.SetTimestamp(from.Timestamp())
 	}
