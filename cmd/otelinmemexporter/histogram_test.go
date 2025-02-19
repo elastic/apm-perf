@@ -128,7 +128,7 @@ func Test_explicitBucketsQuantile(t *testing.T) {
 			},
 		},
 		{
-			name: "real example",
+			name: "benchmark example",
 			buckets: []explicitBucket{
 				{UpperBound: 0, Count: 0},
 				{UpperBound: 5, Count: 1053},

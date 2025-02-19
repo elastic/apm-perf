@@ -248,20 +248,7 @@ func TestAdd_NumberDataPoint(t *testing.T) {
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			store, err := NewStore(cfgs, zap.NewNop())
-			require.NoError(t, err)
-
-			store.Add(tt.input)
-			// Assert GetAll
-			assert.NotPanics(t, func() { store.GetAll() })
-			// Assert if data is correctly handled
-			for i := 0; i < len(cfgs); i++ {
-				actual, err := store.Get(cfgs[i].Key)
-				assert.NoError(t, err)
-				if assert.Equal(t, len(tt.expected[i]), len(actual)) {
-					assert.InDeltaMapValues(t, tt.expected[i], actual, 1e-9)
-				}
-			}
+			runStoreAddTest(t, cfgs, tt.input, tt.expected)
 		})
 	}
 }
@@ -454,21 +441,91 @@ func TestAdd_HistogramDataPoint(t *testing.T) {
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			store, err := NewStore(tt.configs, zap.NewNop())
-			require.NoError(t, err)
-
-			store.Add(tt.input)
-			// Assert GetAll
-			assert.NotPanics(t, func() { store.GetAll() })
-			// Assert if data is correctly handled
-			for i := 0; i < len(tt.configs); i++ {
-				actual, err := store.Get(tt.configs[i].Key)
-				assert.NoError(t, err)
-				if assert.Equal(t, len(tt.expected[i]), len(actual)) {
-					assert.InDeltaMapValues(t, tt.expected[i], actual, 1e-9)
-				}
-			}
+			runStoreAddTest(t, tt.configs, tt.input, tt.expected)
 		})
+	}
+}
+
+func TestAdd_MixedDataPoints(t *testing.T) {
+	startTime := time.Unix(0, 0).UTC().Add(time.Second)
+	cfgs := []AggregationConfig{
+		{
+			Name: "test_num_sum",
+			MatchLabelValues: map[string]string{
+				"k_1": "v_1",
+			},
+			Type:    Sum,
+			Key:     "k1",
+			GroupBy: "",
+		},
+		{
+			Name: "test_hist_sum",
+			MatchLabelValues: map[string]string{
+				"k_1": "v_1",
+			},
+			Type:    Sum,
+			Key:     "k2",
+			GroupBy: "",
+		},
+	}
+
+	for _, tt := range []struct {
+		name     string
+		configs  []AggregationConfig
+		input    pmetric.Metrics
+		expected []map[string]float64 // for each aggregation query 1 output
+	}{
+		{
+			name:    "gauge_and_histogram",
+			configs: cfgs,
+			input: newMetrics(nil).
+				addGaugeMetric(
+					[]string{"test_num_sum"}, 1.23,
+					map[string]string{"k_1": "v_1"},
+					startTime, startTime.Add(time.Second),
+				).
+				addHistMetric(
+					[]string{"test_hist_sum"},
+					[]explicitBucket{
+						{UpperBound: 0, Count: 0},
+						{UpperBound: 10, Count: 1},
+						{UpperBound: math.Inf(+1), Count: 0},
+					},
+					9.58278234,
+					map[string]string{"k_1": "v_1"},
+					startTime, startTime.Add(time.Second),
+				).collect(),
+			expected: []map[string]float64{
+				{"": 1.23},       // gauge
+				{"": 9.58278234}, // hist
+			},
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			runStoreAddTest(t, tt.configs, tt.input, tt.expected)
+		})
+	}
+}
+
+func runStoreAddTest(
+	t *testing.T,
+	configs []AggregationConfig,
+	input pmetric.Metrics,
+	expected []map[string]float64,
+) {
+	store, err := NewStore(configs, zap.NewNop())
+	require.NoError(t, err)
+
+	store.Add(input)
+	// Assert GetAll
+	assert.NotPanics(t, func() { store.GetAll() })
+	// Assert if data is correctly handled
+	for i := 0; i < len(configs); i++ {
+		actual, err := store.Get(configs[i].Key)
+		assert.NoError(t, err)
+		if assert.Equal(t, len(expected[i]), len(actual)) {
+			assert.InDeltaMapValues(t, expected[i], actual, 1e-9)
+		}
 	}
 }
 

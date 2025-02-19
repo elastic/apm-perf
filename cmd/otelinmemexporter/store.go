@@ -116,7 +116,8 @@ type AggregationConfig struct {
 	// combination of name and label values.
 	Type AggregationType `mapstructure:"aggregation_type"`
 
-	// Percentile defines the aggregation percentile to use if Type is "percentile".
+	// Percentile defines the aggregation percentile to use if
+	// Type is "percentile".
 	// It will be used for calculating percentile of histograms.
 	Percentile float64 `mapstructure:"percentile"`
 
@@ -183,7 +184,7 @@ func (cfg *AggregationConfig) isEqual(
 // NewStore creates a new in memory metric store. Returns an
 // error if the provided config is invalid.
 func NewStore(aggs []AggregationConfig, logger *zap.Logger) (*Store, error) {
-	keyM, nameM, err := groupAggregationConfigsByKeyAndName(aggs)
+	keyM, nameM, err := validateAndGroupAggregationConfigs(aggs)
 	if err != nil {
 		return nil, err
 	}
@@ -234,13 +235,13 @@ func (s *Store) GetAll() map[string]map[string]float64 {
 		m[key] = make(map[string]float64, len(numDPByGrp)+len(histDPByGrp))
 		if numExist {
 			for grp, dp := range numDPByGrp {
-				m[key][grp] = getNumByType(cfg.Type, dp)
+				m[key][grp] = getNumAggByType(cfg.Type, dp)
 			}
 		}
 
 		if histExist {
 			for grp, dp := range histDPByGrp {
-				m[key][grp] = getHistByType(cfg.Type, cfg.Percentile, dp)
+				m[key][grp] = getHistAggByType(cfg.Type, cfg.Percentile, dp)
 			}
 		}
 	}
@@ -271,12 +272,12 @@ func (s *Store) Get(key string) (map[string]float64, error) {
 	m := make(map[string]float64, len(numDPByGrp)+len(histDPByGrp))
 	if numExist {
 		for k, dp := range numDPByGrp {
-			m[k] = getNumByType(cfg.Type, dp)
+			m[k] = getNumAggByType(cfg.Type, dp)
 		}
 	}
 	if histExist {
 		for k, dp := range histDPByGrp {
-			m[k] = getHistByType(cfg.Type, cfg.Percentile, dp)
+			m[k] = getHistAggByType(cfg.Type, cfg.Percentile, dp)
 		}
 	}
 
@@ -397,7 +398,7 @@ func (s *Store) mergeHistogramDataPoints(
 	for i := 0; i < from.Len(); i++ {
 		fromDP := from.At(i)
 		if fromDP.Count() == 0 {
-			// Skip histogram data points with no population
+			// Skip histogram data points with no population.
 			continue
 		}
 
@@ -450,7 +451,7 @@ func getMergeTo[T metric](
 	return m[cfg.Key][grp]
 }
 
-func getNumByType(typ AggregationType, dp pmetric.NumberDataPoint) float64 {
+func getNumAggByType(typ AggregationType, dp pmetric.NumberDataPoint) float64 {
 	switch typ {
 	case Rate:
 		if dp.DoubleValue() == 0 {
@@ -469,7 +470,7 @@ func getNumByType(typ AggregationType, dp pmetric.NumberDataPoint) float64 {
 	}
 }
 
-func getHistByType(typ AggregationType, p float64, dp pmetric.HistogramDataPoint) float64 {
+func getHistAggByType(typ AggregationType, p float64, dp pmetric.HistogramDataPoint) float64 {
 	switch typ {
 	case Percentile:
 		return explicitBucketsQuantile(p/100, explicitBucketsFromHistogramDataPoint(dp))
@@ -481,7 +482,7 @@ func getHistByType(typ AggregationType, p float64, dp pmetric.HistogramDataPoint
 	}
 }
 
-func groupAggregationConfigsByKeyAndName(src []AggregationConfig) (keyToConfig, metricNameToConfigs, error) {
+func validateAndGroupAggregationConfigs(src []AggregationConfig) (keyToConfig, metricNameToConfigs, error) {
 	nameM := make(map[string][]AggregationConfig)
 	keyM := make(map[string]*AggregationConfig)
 	for i := range src {
