@@ -41,14 +41,14 @@ func createMetricsExporter(
 	logger := settings.TelemetrySettings.Logger
 
 	// create in memory metrics store
-	inMemStore, err := NewStore(cfg.Aggregations, logger)
+	store, err := NewStore(cfg.Aggregations, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create in-memory metrics store: %w", err)
 	}
 	// Start http server
-	newServer(inMemStore, cfg.Server.Endpoint, logger).Start()
+	newServer(store, cfg.Server.Endpoint, logger).Start()
 
-	exp := newInMemExporter(*cfg, inMemStore, logger)
+	exp := newInMemExporter(*cfg, store, logger)
 	return exporterhelper.NewMetrics(
 		ctx, settings, cfg,
 		exp.consumeMetrics,
