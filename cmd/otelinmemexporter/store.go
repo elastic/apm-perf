@@ -5,7 +5,6 @@
 package otelinmemexporter
 
 import (
-	"encoding/json"
 	"fmt"
 	"sync"
 	"time"
@@ -37,42 +36,6 @@ type (
 
 	keyToGroupToMetric[T metric] map[string]map[string]T
 )
-
-func (kgm keyToGroupToMetric[T]) MarshalJSON() ([]byte, error) {
-	res := map[string]map[string]string{}
-	marshaler := pmetric.JSONMarshaler{}
-	for key, groupToMetric := range kgm {
-		for group, mt := range groupToMetric {
-			if _, ok := res[key]; !ok {
-				res[key] = map[string]string{}
-			}
-
-			metrics := pmetric.NewMetrics()
-			resMetrics := metrics.ResourceMetrics().AppendEmpty()
-			scopeMetrics := resMetrics.ScopeMetrics().AppendEmpty()
-			smMetric := scopeMetrics.Metrics().AppendEmpty()
-
-			switch v := (any(mt)).(type) {
-			case pmetric.NumberDataPoint:
-				smMetric.SetEmptySum()
-				dp := smMetric.Sum().DataPoints().AppendEmpty()
-				v.CopyTo(dp)
-			case pmetric.HistogramDataPoint:
-				smMetric.SetEmptyHistogram()
-				dp := smMetric.Histogram().DataPoints().AppendEmpty()
-				v.CopyTo(dp)
-			}
-
-			b, err := marshaler.MarshalMetrics(metrics)
-			if err != nil {
-				return nil, err
-			}
-			res[key][group] = string(b)
-		}
-	}
-
-	return json.Marshal(res)
-}
 
 // Store is an in-memory data store for telemetry data. Data
 // exported from the in-memory exporter will be aggregated
