@@ -303,6 +303,8 @@ func newTestHistogramDataPoint(
 	dp.BucketCounts().FromRaw(bucketCounts)
 	dp.SetCount(totalCount)
 	dp.SetSum(sum)
+	dp.SetMin(min)
+	dp.SetMax(max)
 	dp.SetStartTimestamp(pcommon.NewTimestampFromTime(startTime))
 	dp.SetTimestamp(pcommon.NewTimestampFromTime(endTime))
 	for k, v := range attrs {
