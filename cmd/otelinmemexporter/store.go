@@ -159,6 +159,7 @@ func NewStore(aggs []AggregationConfig, logger *zap.Logger) (*Store, error) {
 }
 
 // Add adds metrics to the store.
+// The metrics must be of delta temporality, otherwise they will be ignored.
 func (s *Store) Add(ld pmetric.Metrics) {
 	s.Lock()
 	defer s.Unlock()
