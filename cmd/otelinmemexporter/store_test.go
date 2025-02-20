@@ -119,7 +119,7 @@ func TestAdd_NumberDataPoint(t *testing.T) {
 				[]string{"404"}, 1.1,
 				nil,
 				startTime, startTime,
-			).collect(),
+			).get(),
 			expected: []map[string]float64{
 				map[string]float64{"": 0},
 				map[string]float64{"": 0},
@@ -146,7 +146,7 @@ func TestAdd_NumberDataPoint(t *testing.T) {
 					allMetricNames, 3.3,
 					map[string]string{"k_1": "v_1", "k_2": "v_2"},
 					startTime.Add(2*time.Second), startTime.Add(3*time.Second),
-				).collect(),
+				).get(),
 			expected: []map[string]float64{
 				map[string]float64{"": 3.3},               // last
 				map[string]float64{"": 6.6},               // sum
@@ -168,7 +168,7 @@ func TestAdd_NumberDataPoint(t *testing.T) {
 					allMetricNames, 2.2,
 					map[string]string{"k_3": "v_3"},
 					startTime.Add(time.Second), startTime.Add(2*time.Second),
-				).collect(),
+				).get(),
 			expected: []map[string]float64{
 				map[string]float64{"": 2.2},      // last
 				map[string]float64{"": 3.3},      // sum
@@ -204,7 +204,7 @@ func TestAdd_NumberDataPoint(t *testing.T) {
 					[]string{"404"}, 3.3,
 					map[string]string{"k_1": "v_1"},
 					startTime, startTime,
-				).collect(),
+				).get(),
 			expected: []map[string]float64{
 				map[string]float64{"": 0},
 				map[string]float64{"": 0},
@@ -236,7 +236,7 @@ func TestAdd_NumberDataPoint(t *testing.T) {
 					allMetricNames, 4.4,
 					map[string]string{"k_1": "v_1", groupKey: "grp2"},
 					startTime.Add(2*time.Second), startTime.Add(4*time.Second),
-				).collect(),
+				).get(),
 			expected: []map[string]float64{
 				map[string]float64{"": 4.4},                           // last
 				map[string]float64{"": 8.8},                           // sum
@@ -279,7 +279,7 @@ func TestAdd_HistogramDataPoint(t *testing.T) {
 					5,
 					nil,
 					startTime, startTime,
-				).collect(),
+				).get(),
 			expected: []map[string]float64{
 				{"": 0},
 				{"": 0},
@@ -325,7 +325,7 @@ func TestAdd_HistogramDataPoint(t *testing.T) {
 					35,
 					map[string]string{"k_1": "v_1", "k_2": "v_2"},
 					startTime.Add(2*time.Second), startTime.Add(3*time.Second),
-				).collect(),
+				).get(),
 			expected: []map[string]float64{
 				{"": 9.8275862068},     // percentile
 				{"": 125},              // sum
@@ -367,7 +367,7 @@ func TestAdd_HistogramDataPoint(t *testing.T) {
 					5,
 					map[string]string{"k_1": "v_1"},
 					startTime, startTime,
-				).collect(),
+				).get(),
 			expected: []map[string]float64{
 				{"": 0},
 				{"": 0},
@@ -431,7 +431,7 @@ func TestAdd_HistogramDataPoint(t *testing.T) {
 					3,
 					map[string]string{"k_1": "v_1", groupKey: "grp2"},
 					startTime.Add(2*time.Second), startTime.Add(4*time.Second),
-				).collect(),
+				).get(),
 			expected: []map[string]float64{
 				{"": 1.75},                          // percentile
 				{"": 10},                            // sum
@@ -494,7 +494,7 @@ func TestAdd_MixedDataPoints(t *testing.T) {
 					9.58278234,
 					map[string]string{"k_1": "v_1"},
 					startTime, startTime.Add(time.Second),
-				).collect(),
+				).get(),
 			expected: []map[string]float64{
 				{"": 1.23},       // gauge
 				{"": 9.58278234}, // hist
@@ -583,7 +583,7 @@ func (tms *testMetricSlice) addHistMetric(
 	return tms
 }
 
-func (tms *testMetricSlice) collect() pmetric.Metrics {
+func (tms *testMetricSlice) get() pmetric.Metrics {
 	return tms.m
 }
 

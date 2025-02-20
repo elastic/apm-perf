@@ -31,8 +31,8 @@ type metric interface {
 }
 
 type (
-	metricNameToConfigs map[string][]AggregationConfig
-	keyToConfig         map[string]*AggregationConfig
+	metricNameToAggConfigs map[string][]AggregationConfig
+	keyToAggConfig         map[string]*AggregationConfig
 
 	keyToGroupToMetric[T metric] map[string]map[string]T
 )
@@ -43,8 +43,8 @@ type (
 // a specfic set of entries specified during creation.
 type Store struct {
 	sync.RWMutex
-	nameM metricNameToConfigs
-	keyM  keyToConfig
+	nameM metricNameToAggConfigs
+	keyM  keyToAggConfig
 	nums  keyToGroupToMetric[pmetric.NumberDataPoint]
 	hists keyToGroupToMetric[pmetric.HistogramDataPoint]
 
@@ -80,8 +80,8 @@ type AggregationConfig struct {
 	Type AggregationType `mapstructure:"aggregation_type"`
 
 	// Percentile defines the aggregation percentile to use if
-	// Type is "percentile".
-	// It will be used for calculating percentile of histograms.
+	// Type is "percentile". It will be used for calculating the
+	// percentile of histograms. Must be in range `(0., 100.]`.
 	Percentile float64 `mapstructure:"percentile"`
 
 	// GroupBy allows grouping the metrics by a specific key. An
@@ -446,7 +446,7 @@ func getHistAggByType(typ AggregationType, p float64, dp pmetric.HistogramDataPo
 	}
 }
 
-func validateAndGroupAggregationConfigs(src []AggregationConfig) (keyToConfig, metricNameToConfigs, error) {
+func validateAndGroupAggregationConfigs(src []AggregationConfig) (keyToAggConfig, metricNameToAggConfigs, error) {
 	nameM := make(map[string][]AggregationConfig)
 	keyM := make(map[string]*AggregationConfig)
 	for i := range src {
