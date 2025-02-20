@@ -38,10 +38,11 @@ func explicitBucketsFromHistogramDataPoint(dp pmetric.HistogramDataPoint) []expl
 	return buckets
 }
 
-// explicitBucketsQuantile calculates the quantile `q` based on the given buckets.
-// The buckets are assumed to be contiguous, e.g. `(-Inf, 5], (5, 10], (10, +Inf]`, but can be
-// unsorted since the function will sort the buckets based on upper bound prior to calculation.
-// The buckets must also have the highest bound of +Inf.
+// deltaExplicitBucketsQuantile calculates the quantile `q` based on the given buckets.
+// The buckets are assumed to be of delta temporality (as opposed to cumulative) and
+// consist of non-overlapping contiguous bounds, e.g. `(-Inf, 0], (0, 10], (10, +Inf]`.
+// The buckets can be unsorted since the function will sort the buckets based on upper
+// bound prior to calculation. The buckets must also have the highest bound of +Inf.
 //
 // The quantile value is interpolated assuming a linear distribution within a bucket.
 // However, if the quantile falls into the highest bucket i.e. `(x, +Inf]`, the lower bound of that
@@ -55,7 +56,7 @@ func explicitBucketsFromHistogramDataPoint(dp pmetric.HistogramDataPoint) []expl
 //   - If `buckets` has fewer than 2 elements, NaN is returned.
 //   - If the highest bucket is not +Inf, NaN is returned.
 //   - If `buckets` has 0 observations, NaN is returned.
-func explicitBucketsQuantile(q float64, buckets []explicitBucket) float64 {
+func deltaExplicitBucketsQuantile(q float64, buckets []explicitBucket) float64 {
 	if math.IsNaN(q) {
 		return math.NaN()
 	}

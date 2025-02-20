@@ -95,9 +95,9 @@ func Test_explicitBucketsQuantile_SpecialCases(t *testing.T) {
 			assertInDeltaWithInfAndNaN(
 				t,
 				tt.want,
-				explicitBucketsQuantile(tt.args.p, tt.args.buckets),
+				deltaExplicitBucketsQuantile(tt.args.p, tt.args.buckets),
 				0,
-				"explicitBucketsQuantile()",
+				"deltaExplicitBucketsQuantile()",
 			)
 		})
 	}
@@ -111,7 +111,7 @@ func Test_explicitBucketsQuantile(t *testing.T) {
 		wantValues map[float64]float64
 	}{
 		{
-			name: "promql example",
+			name: "simple example",
 			buckets: []explicitBucket{
 				{UpperBound: 0, Count: 0},
 				{UpperBound: 10, Count: 10},
@@ -153,9 +153,9 @@ func Test_explicitBucketsQuantile(t *testing.T) {
 				assertInDeltaWithInfAndNaN(
 					t,
 					tt.wantValues[q],
-					explicitBucketsQuantile(q, tt.buckets),
+					deltaExplicitBucketsQuantile(q, tt.buckets),
 					1e-9,
-					"explicitBucketsQuantile()",
+					"deltaExplicitBucketsQuantile()",
 				)
 			})
 		}

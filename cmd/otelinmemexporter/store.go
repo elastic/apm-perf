@@ -437,7 +437,7 @@ func getHistAggByType(typ AggregationType, p float64, dp pmetric.HistogramDataPo
 	switch typ {
 	case Percentile:
 		// Need to convert percentile to quantile.
-		return explicitBucketsQuantile(p/100, explicitBucketsFromHistogramDataPoint(dp))
+		return deltaExplicitBucketsQuantile(p/100, explicitBucketsFromHistogramDataPoint(dp))
 	case Sum:
 		return dp.Sum()
 	default:
