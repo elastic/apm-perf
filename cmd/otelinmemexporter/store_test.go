@@ -288,7 +288,8 @@ func TestAdd_HistogramDataPoint(t *testing.T) {
 			},
 		},
 		{
-			name: "filtered_input",
+			name:    "filtered_input",
+			configs: p95Cfgs,
 			input: newMetrics(nil).
 				addHistMetric(
 					p95MetricNames,
@@ -334,7 +335,8 @@ func TestAdd_HistogramDataPoint(t *testing.T) {
 			},
 		},
 		{
-			name: "unfiltered_input",
+			name:    "unfiltered_input",
+			configs: p95Cfgs,
 			input: newMetrics(map[string]string{groupKey: "grp1"}).
 				// no labels
 				addHistMetric(
@@ -513,6 +515,7 @@ func runStoreAddTest(
 	input pmetric.Metrics,
 	expected []map[string]float64,
 ) {
+	require.True(t, len(configs) > 0)
 	store, err := NewStore(configs, zap.NewNop())
 	require.NoError(t, err)
 
