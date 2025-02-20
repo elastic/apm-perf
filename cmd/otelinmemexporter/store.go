@@ -159,7 +159,13 @@ func NewStore(aggs []AggregationConfig, logger *zap.Logger) (*Store, error) {
 }
 
 // Add adds metrics to the store.
-// The metrics must be of delta temporality, otherwise they will be ignored.
+// The metrics must be of delta temporality, otherwise they will be ignored with warning.
+//
+// Two kinds of metrics are supported, each with different aggregations:
+//  1. pmetric.Sum / pmetric.Gauge (aggregation: Last, Sum, Rate)
+//  2. pmetric.Histogram (aggregation: Percentile, Sum)
+//
+// Unsupported metric-aggregation combinations will be ignored with warning.
 func (s *Store) Add(ld pmetric.Metrics) {
 	s.Lock()
 	defer s.Unlock()
@@ -343,10 +349,30 @@ func (s *Store) mergeNumberDataPoints(
 			default:
 				s.logger.Warn(
 					"aggregation type not available for number data points",
+					zap.String("name", name),
 					zap.String("agg_type", string(cfg.Type)),
 				)
 			}
 		}
+	}
+}
+
+func getNumAggByType(typ AggregationType, dp pmetric.NumberDataPoint) float64 {
+	switch typ {
+	case Rate:
+		if dp.DoubleValue() == 0 {
+			return 0
+		}
+		duration := time.Duration(dp.Timestamp() - dp.StartTimestamp()).Seconds()
+		if duration <= 0 {
+			return 0
+		}
+		return dp.DoubleValue() / duration
+	case Last, Sum:
+		return dp.DoubleValue()
+	default:
+		// Should not be able to reach here since it should be aborted on consuming metrics.
+		return 0
 	}
 }
 
@@ -375,10 +401,24 @@ func (s *Store) mergeHistogramDataPoints(
 			default:
 				s.logger.Warn(
 					"aggregation type not available for histogram data points",
+					zap.String("name", name),
 					zap.String("agg_type", string(cfg.Type)),
 				)
 			}
 		}
+	}
+}
+
+func getHistAggByType(typ AggregationType, p float64, dp pmetric.HistogramDataPoint) float64 {
+	switch typ {
+	case Percentile:
+		// Need to convert percentile to quantile.
+		return deltaExplicitBucketsQuantile(p/100, explicitBucketsFromHistogramDataPoint(dp))
+	case Sum:
+		return dp.Sum()
+	default:
+		// Should not be able to reach here since it should be aborted on consuming metrics.
+		return 0
 	}
 }
 
@@ -413,38 +453,6 @@ func getMergeTo[T metric](
 		m[cfg.Key][grp] = initFn()
 	}
 	return m[cfg.Key][grp]
-}
-
-func getNumAggByType(typ AggregationType, dp pmetric.NumberDataPoint) float64 {
-	switch typ {
-	case Rate:
-		if dp.DoubleValue() == 0 {
-			return 0
-		}
-		duration := time.Duration(dp.Timestamp() - dp.StartTimestamp()).Seconds()
-		if duration <= 0 {
-			return 0
-		}
-		return dp.DoubleValue() / duration
-	case Last, Sum:
-		return dp.DoubleValue()
-	default:
-		// Should not be able to reach here since it should be aborted on consuming metrics.
-		return 0
-	}
-}
-
-func getHistAggByType(typ AggregationType, p float64, dp pmetric.HistogramDataPoint) float64 {
-	switch typ {
-	case Percentile:
-		// Need to convert percentile to quantile.
-		return deltaExplicitBucketsQuantile(p/100, explicitBucketsFromHistogramDataPoint(dp))
-	case Sum:
-		return dp.Sum()
-	default:
-		// Should not be able to reach here since it should be aborted on consuming metrics.
-		return 0
-	}
 }
 
 func validateAndGroupAggregationConfigs(src []AggregationConfig) (keyToAggConfig, metricNameToAggConfigs, error) {
