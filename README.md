@@ -28,7 +28,7 @@ All the flags are optional, but it's expected to provide a scenario flag to star
 ./apmsoak run --scenario=steady
 ```
 
-The configs in `scenarios.yml` file inherits [loadgen](./internal/loadgen/config/config.go) configs, with extra fields such as project_id and api_key that can be used for the managed APM service.
+The configs in `scenarios.yml` file inherits [loadgen](./loadgen/config/config.go) configs, with extra fields such as project_id and api_key that can be used for the managed APM service.
 
 Note that the managed service will use API key based auth and one soaktest can target multiple projects, so we provide key-value pairs(projectID and api key respectively). the api key can also be provided as an [ENV variable](https://github.com/elastic/apm-perf/blob/main/cmd/apmsoak/run.go#L20).
 
