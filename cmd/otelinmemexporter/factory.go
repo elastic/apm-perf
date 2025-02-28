@@ -48,7 +48,7 @@ func createMetricsExporter(
 	// Start http server
 	newServer(store, cfg.Server.Endpoint, logger).Start()
 
-	exp := new(*cfg, store, logger)
+	exp := newInMemExporter(*cfg, store, logger)
 	return exporterhelper.NewMetrics(
 		ctx, settings, cfg,
 		exp.consumeMetrics,
