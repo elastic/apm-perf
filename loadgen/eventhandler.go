@@ -25,8 +25,17 @@ import (
 //go:embed events/*.ndjson
 var events embed.FS
 
+// eventsv7 holds the current stored events
+// that should be use when targetting a 7.x
+// APM Server.
+//
+//go:embed eventsv7/*.ndjson
+var eventsv7 embed.FS
+
 type EventHandlerParams struct {
 	Logger *zap.Logger
+
+	V7 bool
 
 	Path                      string
 	URL                       string
@@ -60,6 +69,7 @@ type EventHandlerParams struct {
 
 func (e EventHandlerParams) MarshalLogObject(enc zapcore.ObjectEncoder) error {
 	// NOTE: Logger is ignored.
+	enc.AddBool("v7", e.V7)
 	enc.AddString("path", e.Path)
 	enc.AddString("url", e.URL)
 	enc.AddString("token", "REDACTED")
@@ -114,10 +124,17 @@ func newAPMEventHandler(p EventHandlerParams) (*eventhandler.Handler, error) {
 		return nil, fmt.Errorf("cannot create HTTP transport: %w", err)
 	}
 
+	loc := filepath.Join("events", p.Path)
+	storage := events
+	if p.V7 {
+		loc = filepath.Join("eventsv7", p.Path)
+		storage = eventsv7
+	}
+
 	c := eventhandler.Config{
-		Path:                      filepath.Join("events", p.Path),
+		Path:                      loc,
 		Transport:                 eventhandler.NewAPMTransport(p.Logger, t.Client, p.URL, p.Token, p.APIKey, p.Headers),
-		Storage:                   events,
+		Storage:                   storage,
 		Limiter:                   p.Limiter,
 		Rand:                      p.Rand,
 		IgnoreErrors:              p.IgnoreErrors,
