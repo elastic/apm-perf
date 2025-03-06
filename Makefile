@@ -64,7 +64,7 @@ sanitize: IMAGE_REF=$$(cat "$(STATES_DIR)/image_ref")
 sanitize:
 	docker run --rm $(IMAGE_REF) apmsoak version
 
-.PHONY: publish`
+.PHONY: publish
 publish: IMAGE_REF=$$(cat "$(STATES_DIR)/image_ref")
 publish:
 	docker push $(IMAGE_REF)
