@@ -46,6 +46,10 @@ type Config struct {
 	RewriteSpanNames          bool
 	RewriteTransactionNames   bool
 	RewriteTransactionTypes   bool
+
+	// TargetV7Stack specifies if the emitted data
+	// must be compatible with a 7.x APM Server
+	TargetV7APMServer bool
 }
 
 func (c Config) Validate() error {
