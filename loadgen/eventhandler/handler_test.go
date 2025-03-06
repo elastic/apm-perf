@@ -190,7 +190,7 @@ func TestHandlerNew(t *testing.T) {
 			Storage:   storage,
 			Writer:    writeAPMEvents,
 		}, &APMEventCollector{})
-		require.EqualError(t, err, "eventhandler: glob matched no files, please specify a valid glob pattern")
+		require.EqualError(t, err, "eventhandler: found no elements to replay from go*.ndjson")
 		assert.Nil(t, h)
 	})
 	t.Run("failure-invalid-glob", func(t *testing.T) {
@@ -200,7 +200,7 @@ func TestHandlerNew(t *testing.T) {
 			Storage:   storage,
 			Writer:    writeAPMEvents,
 		}, &APMEventCollector{})
-		require.EqualError(t, err, "eventhandler: glob matched no files, please specify a valid glob pattern")
+		require.EqualError(t, err, "eventhandler: path is required")
 		assert.Nil(t, h)
 	})
 	t.Run("failure-rum-data", func(t *testing.T) {
