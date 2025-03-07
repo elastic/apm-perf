@@ -58,6 +58,7 @@ func (g *Generator) RunBlocking(ctx context.Context) error {
 func runAgent(ctx context.Context, l *zap.Logger, expr string, limiter *rate.Limiter, rng *rand.Rand, cfg Config) error {
 	handler, err := loadgen.NewEventHandler(loadgen.EventHandlerParams{
 		Logger:                    l,
+		V7:                        cfg.TargetV7APMServer,
 		URL:                       cfg.ServerURL.String(),
 		Path:                      expr,
 		APIKey:                    cfg.APIKey,

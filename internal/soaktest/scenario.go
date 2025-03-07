@@ -39,6 +39,9 @@ type ScenarioConfig struct {
 	// Headers contains additional HTTP headers to attach to every data
 	// request sent as part of the scenario.
 	Headers map[string]string `yaml:"headers"`
+	// V7 specifies if the sample data to be used for this scenario should
+	// be compatible with a 7.x APM Server.
+	V7 bool `yaml:"v7"`
 
 	RewriteIDs                bool `yaml:"rewrite_ids"`
 	RewriteTimestamps         bool `yaml:"rewrite_timestamps"`

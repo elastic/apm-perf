@@ -159,6 +159,9 @@ type Config struct {
 
 // New creates a new Handler with config.
 func New(logger *zap.Logger, config Config, ec EventCollector) (*Handler, error) {
+	if config.Path == "" {
+		return nil, fmt.Errorf("eventhandler: path is required")
+	}
 	if config.Transport == nil {
 		return nil, errors.New("empty transport received")
 	}
@@ -228,7 +231,7 @@ func New(logger *zap.Logger, config Config, ec EventCollector) (*Handler, error)
 		}
 	}
 	if len(h.batches) == 0 {
-		return nil, errors.New("eventhandler: glob matched no files, please specify a valid glob pattern")
+		return nil, fmt.Errorf("eventhandler: found no elements to replay from %s", config.Path)
 	}
 
 	logger.Debug("collected batches", zap.Int("size", len(h.batches)))

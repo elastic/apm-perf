@@ -186,6 +186,7 @@ func getHandlerParams(runnerConfig *RunnerConfig, config ScenarioConfig) (loadge
 	}
 
 	params = loadgen.EventHandlerParams{
+		V7:                        config.V7,
 		Path:                      path,
 		URL:                       serverURL.String(),
 		APIKey:                    config.APIKey,
