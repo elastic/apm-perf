@@ -47,7 +47,7 @@ type Config struct {
 	RewriteTransactionNames   bool
 	RewriteTransactionTypes   bool
 
-	// TargetV7Stack specifies if the emitted data
+	// TargetV7APMServer specifies if the emitted data
 	// must be compatible with a 7.x APM Server
 	TargetV7APMServer bool
 }
