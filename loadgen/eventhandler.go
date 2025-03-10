@@ -22,15 +22,11 @@ import (
 
 // events holds the current stored events.
 //
-//go:embed events/*.ndjson
-var events embed.FS
-
-// eventsv7 holds the current stored events
-// that should be use when targetting a 7.x
-// APM Server.
+// events/*.ndjsn hold stack 8.x compatible sample files.
+// eventsv7/*.ndjson hold stack 7.x compatible  sample files.
 //
-//go:embed eventsv7/*.ndjson
-var eventsv7 embed.FS
+//go:embed events/*.ndjson eventsv7/*.ndjson
+var events embed.FS
 
 type EventHandlerParams struct {
 	Logger *zap.Logger
@@ -124,11 +120,9 @@ func newAPMEventHandler(p EventHandlerParams) (*eventhandler.Handler, error) {
 		return nil, fmt.Errorf("cannot create HTTP transport: %w", err)
 	}
 
-	loc := filepath.Join("events", p.Path)
-	storage := events
+	path := filepath.Join("events", p.Path)
 	if p.V7 {
-		loc = filepath.Join("eventsv7", p.Path)
-		storage = eventsv7
+		path = filepath.Join("eventsv7", p.Path)
 
 		// NOTE: 7.x APM Server is not capable of handling string based timestamps
 		// and will fail with a 400 decode error on ingestion.
@@ -140,10 +134,11 @@ func newAPMEventHandler(p EventHandlerParams) (*eventhandler.Handler, error) {
 		}
 	}
 
+	p.Logger.Debug("computed load generation parameters", zap.Object("params", p))
 	c := eventhandler.Config{
-		Path:                      loc,
+		Path:                      path,
 		Transport:                 eventhandler.NewAPMTransport(p.Logger, t.Client, p.URL, p.Token, p.APIKey, p.Headers),
-		Storage:                   storage,
+		Storage:                   events,
 		Limiter:                   p.Limiter,
 		Rand:                      p.Rand,
 		IgnoreErrors:              p.IgnoreErrors,
