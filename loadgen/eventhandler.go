@@ -16,6 +16,7 @@ import (
 	"golang.org/x/time/rate"
 
 	"github.com/elastic/apm-perf/loadgen/eventhandler"
+	"github.com/elastic/apm-perf/pkg/supportedstacks"
 
 	"go.elastic.co/apm/v2/transport"
 )
@@ -56,6 +57,8 @@ type EventHandlerParams struct {
 	// between each value. When using Protocol otlp/http
 	// each data type requires a separate EventHandler.
 	Datatype string
+
+	supportedstacks.TargetStackVersion
 }
 
 func (e EventHandlerParams) MarshalLogObject(enc zapcore.ObjectEncoder) error {
@@ -130,6 +133,7 @@ func newAPMEventHandler(p EventHandlerParams) (*eventhandler.Handler, error) {
 		RewriteTransactionNames:   p.RewriteTransactionNames,
 		RewriteTransactionTypes:   p.RewriteTransactionTypes,
 		RewriteTimestamps:         p.RewriteTimestamps,
+		TargetStackVersion:        p.TargetStackVersion,
 	}
 
 	return eventhandler.NewAPM(p.Logger, c)
