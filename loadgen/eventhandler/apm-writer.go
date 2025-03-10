@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/elastic/apm-perf/pkg/supportedstacks"
+
 	"github.com/tidwall/gjson"
 )
 
