@@ -56,6 +56,10 @@ func (g *Generator) RunBlocking(ctx context.Context) error {
 }
 
 func runAgent(ctx context.Context, l *zap.Logger, expr string, limiter *rate.Limiter, rng *rand.Rand, cfg Config) error {
+	if cfg.TargetV7APMServer && cfg.RewriteTimestamps {
+		return fmt.Errorf("v7 does not support string based timestamps; disable RewriteTimestamps; see loadgen/eventhandler.go")
+	}
+
 	handler, err := loadgen.NewEventHandler(loadgen.EventHandlerParams{
 		Logger:                    l,
 		V7:                        cfg.TargetV7APMServer,

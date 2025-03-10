@@ -129,6 +129,15 @@ func newAPMEventHandler(p EventHandlerParams) (*eventhandler.Handler, error) {
 	if p.V7 {
 		loc = filepath.Join("eventsv7", p.Path)
 		storage = eventsv7
+
+		// NOTE: 7.x APM Server is not capable of handling string based timestamps
+		// and will fail with a 400 decode error on ingestion.
+		// This could be implemented in loadgen/eventhandler/apm-writer.go but due
+		// to 9.x timeline the value is considered too low.
+		// Return an error to aid troubleshootig.
+		if p.RewriteTimestamps {
+			return nil, fmt.Errorf("V7 and RewriteTimestamps are both true, but this will not work")
+		}
 	}
 
 	c := eventhandler.Config{

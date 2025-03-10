@@ -60,6 +60,9 @@ func writeAPMEvents(config Config, minTimestamp time.Time, w *eventWriter, b bat
 					// either the base timestamp, or the minimum timestamp
 					// across all the batches; string-formatted timestamps
 					// may have nanosecond precision.
+					// Note that this prevents using RewriteTimestamps when
+					// targeting a 7.x APM Server, as it will fail deconding
+					// incoming events.
 					offset := event.timestamp.Sub(minTimestamp)
 					timestamp := baseTimestamp.Add(offset)
 					w.rewriteBuf.RawByte('"')
