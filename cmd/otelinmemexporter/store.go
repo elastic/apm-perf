@@ -196,23 +196,17 @@ func (s *Store) GetAll() map[string]map[string]float64 {
 	for key, cfg := range s.keyM {
 		numDPByGrp, numExist := s.nums[key]
 		histDPByGrp, histExist := s.hists[key]
-
 		if !numExist && !histExist {
 			m[key] = map[string]float64{"": 0}
 			continue
 		}
 
 		m[key] = make(map[string]float64, len(numDPByGrp)+len(histDPByGrp))
-		if numExist {
-			for grp, dp := range numDPByGrp {
-				m[key][grp] = getNumAggByType(cfg.Type, dp)
-			}
+		for grp, dp := range numDPByGrp {
+			m[key][grp] = getNumAggByType(cfg.Type, dp)
 		}
-
-		if histExist {
-			for grp, dp := range histDPByGrp {
-				m[key][grp] = getHistAggByType(cfg.Type, cfg.Percentile, dp)
-			}
+		for grp, dp := range histDPByGrp {
+			m[key][grp] = getHistAggByType(cfg.Type, cfg.Percentile, dp)
 		}
 	}
 
@@ -234,21 +228,16 @@ func (s *Store) Get(key string) (map[string]float64, error) {
 
 	numDPByGrp, numExist := s.nums[key]
 	histDPByGrp, histExist := s.hists[key]
-
 	if !numExist && !histExist {
 		return map[string]float64{"": 0}, nil
 	}
 
 	m := make(map[string]float64, len(numDPByGrp)+len(histDPByGrp))
-	if numExist {
-		for k, dp := range numDPByGrp {
-			m[k] = getNumAggByType(cfg.Type, dp)
-		}
+	for k, dp := range numDPByGrp {
+		m[k] = getNumAggByType(cfg.Type, dp)
 	}
-	if histExist {
-		for k, dp := range histDPByGrp {
-			m[k] = getHistAggByType(cfg.Type, cfg.Percentile, dp)
-		}
+	for k, dp := range histDPByGrp {
+		m[k] = getHistAggByType(cfg.Type, cfg.Percentile, dp)
 	}
 
 	return m, nil

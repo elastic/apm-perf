@@ -5,6 +5,7 @@
 package otelinmemexporter
 
 import (
+	"cmp"
 	"math"
 	"slices"
 
@@ -69,13 +70,7 @@ func deltaExplicitBucketsQuantile(q float64, buckets []explicitBucket) float64 {
 
 	slices.SortFunc(buckets, func(a, b explicitBucket) int {
 		// We don't expect the bucket boundary to be a NaN.
-		if a.UpperBound < b.UpperBound {
-			return -1
-		}
-		if a.UpperBound > b.UpperBound {
-			return +1
-		}
-		return 0
+		return cmp.Compare(a.UpperBound, b.UpperBound)
 	})
 
 	if len(buckets) < 2 {
