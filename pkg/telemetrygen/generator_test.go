@@ -53,3 +53,24 @@ func newTestServer(t *testing.T) (*httptest.Server, *atomic.Int32) {
 
 	return srv, requestsReceived
 }
+
+func TestGenerationV7(t *testing.T) {
+	srv, m := newTestServer(t)
+
+	cfg := telemetrygen.DefaultConfig()
+	cfg.Secure = false
+	cfg.TargetV7APMServer = true
+
+	u, err := url.Parse(srv.URL)
+	require.NoError(t, err)
+	cfg.ServerURL = u
+
+	cfg.EventRate.Set("10/s")
+	g, err := telemetrygen.New(cfg)
+	// g.Logger = zap.Must(zap.NewDevelopment())
+	require.NoError(t, err)
+
+	err = g.RunBlocking(context.Background())
+	require.NoError(t, err)
+	require.Greater(t, m.Load(), int32(0))
+}
