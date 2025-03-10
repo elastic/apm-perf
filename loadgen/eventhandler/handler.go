@@ -21,6 +21,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/elastic/apm-perf/pkg/supportedstacks"
+
 	"github.com/klauspost/compress/zlib"
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
@@ -155,6 +157,10 @@ type Config struct {
 	// RewriteTransactionTypes controls the rewriting of `transaction.type`
 	// in events.
 	RewriteTransactionTypes bool
+	// TargetStackVersion represents the version of the stack that event
+	// generation is targetting. This allows to tailor the geneator behavior
+	// if needed (es rewriting timestamps).
+	TargetStackVersion supportedstacks.TargetStackVersion
 }
 
 // New creates a new Handler with config.
