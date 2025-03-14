@@ -1,6 +1,7 @@
 module github.com/elastic/apm-perf/tools
 
-go 1.23
+go 1.24
+
 require (
 	github.com/elastic/go-licenser v0.4.2
 	go.elastic.co/go-licence-detector v0.7.0
