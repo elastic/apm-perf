@@ -2,6 +2,8 @@ module github.com/elastic/apm-perf
 
 go 1.23.0
 
+toolchain go1.24.1
+
 require (
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
 	github.com/klauspost/compress v1.18.0
@@ -10,7 +12,7 @@ require (
 	github.com/stretchr/testify v1.10.0
 	github.com/tidwall/gjson v1.18.0
 	github.com/tidwall/sjson v1.2.5
-	go.elastic.co/apm/v2 v2.6.3
+	go.elastic.co/apm/v2 v2.7.0
 	go.elastic.co/ecszap v1.0.3
 	go.elastic.co/fastjson v1.5.0
 	go.opentelemetry.io/collector/pdata v1.27.0
