@@ -11,6 +11,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/elastic/apm-perf/pkg/supportedstacks"
 )
 
 func DefaultConfig() Config {
@@ -24,6 +26,8 @@ func DefaultConfig() Config {
 		// default to rewrite ids and timestamp to have new events recorded at the current time.
 		RewriteIDs:        true,
 		RewriteTimestamps: true,
+		// default to 8.x to keep backward compatibility.
+		TargetStackVersion: supportedstacks.TargetStackVersion8x,
 	}
 }
 
@@ -46,6 +50,8 @@ type Config struct {
 	RewriteSpanNames          bool
 	RewriteTransactionNames   bool
 	RewriteTransactionTypes   bool
+
+	TargetStackVersion supportedstacks.TargetStackVersion
 }
 
 func (c Config) Validate() error {
