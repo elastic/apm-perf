@@ -1,10 +1,15 @@
+// Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+// or more contributor license agreements. Licensed under the Elastic License 2.0;
+// you may not use this file except in compliance with the Elastic License 2.0.
+
 package supportedstacks_test
 
 import (
 	"testing"
 
-	"github.com/elastic/apm-perf/pkg/supportedstacks"
 	"github.com/stretchr/testify/require"
+
+	"github.com/elastic/apm-perf/pkg/supportedstacks"
 )
 
 func TestFromString(t *testing.T) {
