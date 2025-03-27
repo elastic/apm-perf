@@ -49,8 +49,6 @@ type ScenarioConfig struct {
 	RewriteTransactionNames   bool `yaml:"rewrite_transaction_names"`
 	RewriteTransactionTypes   bool `yaml:"rewrite_transaction_types"`
 
-	// V7 indicates if this scenario targets a 7.x APM Server.
-	V7 bool `yaml:"v7"`
-	// V8 indicates if this scenario targets a 8.x APM Server.
-	V8 bool `yaml:"v8"`
+	// TargetVersion indicates which Stack version this scenario targets.
+	TargetVersion string `yaml:"version"`
 }

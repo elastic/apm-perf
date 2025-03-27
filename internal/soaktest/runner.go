@@ -65,10 +65,10 @@ func NewRunner(config *RunnerConfig, logger *zap.Logger) (*Runner, error) {
 	}
 
 	for _, v := range scenarioConfigs {
-		// If no preference for v7 or v8 is expressed set it to
-		// v8 to preserve backward compatibility.
-		if !v.V8 && !v.V7 {
-			v.V8 = true
+		// If no version preference is expressed set it to latest
+		// to preserve backward compatibility.
+		if v.TargetVersion == "" {
+			v.TargetVersion = "latest"
 		}
 	}
 
@@ -222,11 +222,6 @@ func getHandlerParams(runnerConfig *RunnerConfig, config ScenarioConfig) (loadge
 }
 
 func targetStackVer(config ScenarioConfig) supportedstacks.TargetStackVersion {
-	if config.V7 {
-		return supportedstacks.TargetStackVersion7x
-	}
-	if config.V8 {
-		return supportedstacks.TargetStackVersion8x
-	}
-	return supportedstacks.TargetStackVersionUnknown
+	v, _ := supportedstacks.FromStringVersion(config.TargetVersion)
+	return v
 }
