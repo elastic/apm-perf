@@ -59,8 +59,8 @@ func writeAPMEvents(config Config, minTimestamp time.Time, w *eventWriter, b bat
 				if config.RewriteTimestamps && !event.timestamp.IsZero() {
 					switch config.TargetStackVersion {
 					case supportedstacks.TargetStackVersionUnknown:
-						// if uknown alert the caller
-						panic("rewriting timestamp for an unknown version, this may produce unexpected failures")
+						// if uknown assume 8.x to keep backward compatibility
+						rewriteTimestamp8x(event, minTimestamp, baseTimestamp, w)
 					case supportedstacks.TargetStackVersion7x:
 						rewriteTimestamp7x(event, minTimestamp, baseTimestamp, w)
 					case supportedstacks.TargetStackVersion8x:
