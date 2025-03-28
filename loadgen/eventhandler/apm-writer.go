@@ -144,7 +144,9 @@ func rewriteTimestamp7x(event event, minTimestamp time.Time, baseTimestamp time.
 	// 7.x does not support receiving string based timestamps
 	offset := event.timestamp.Sub(minTimestamp)
 	timestamp := baseTimestamp.Add(offset)
-	w.rewriteBuf.Int64(timestamp.Unix())
+	// The timestamp is in microseconds:
+	// https://github.com/elastic/apm-server/blob/7.17/model/modeldecoder/v2/model.go#L611
+	w.rewriteBuf.Uint64(uint64(timestamp.UnixMicro()))
 }
 
 func rewriteTimestamp8x(event event, minTimestamp time.Time, baseTimestamp time.Time, w *eventWriter) {
