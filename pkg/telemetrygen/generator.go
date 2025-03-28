@@ -73,6 +73,7 @@ func runAgent(ctx context.Context, l *zap.Logger, expr string, limiter *rate.Lim
 		RewriteTimestamps:         cfg.RewriteTimestamps,
 		Headers:                   cfg.Headers,
 		Protocol:                  "apm/http",
+		TargetStackVersion:        cfg.TargetStackVersion,
 	})
 	if err != nil {
 		return fmt.Errorf("cannot create event handler: %w", err)

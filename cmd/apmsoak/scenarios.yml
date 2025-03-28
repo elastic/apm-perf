@@ -28,3 +28,20 @@ scenarios:
     - event_rate: 10000/1s
       agent_name: apm-ruby
       agent_replicas: 3
+  apm-server-v7:
+    - event_rate: 10000/1s
+      agent_name: apm-go
+      agent_replicas: 3
+      version: 7x
+    - event_rate: 10000/1s
+      agent_name: apm-nodejs
+      agent_replicas: 3
+      version: 7x
+    - event_rate: 10000/1s
+      agent_name: apm-python
+      agent_replicas: 3
+      version: 7x
+    - event_rate: 10000/1s
+      agent_name: apm-ruby
+      agent_replicas: 3
+      version: 7x

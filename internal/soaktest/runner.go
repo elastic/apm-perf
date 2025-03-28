@@ -23,6 +23,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/elastic/apm-perf/loadgen"
+	"github.com/elastic/apm-perf/pkg/supportedstacks"
 )
 
 type RunnerConfig struct {
@@ -61,6 +62,14 @@ func NewRunner(config *RunnerConfig, logger *zap.Logger) (*Runner, error) {
 	scenarioConfigs := y.Scenarios[config.Scenario]
 	if scenarioConfigs == nil {
 		return nil, errors.New("unknown scenario " + config.Scenario)
+	}
+
+	for _, v := range scenarioConfigs {
+		// If no version preference is expressed set it to latest
+		// to preserve backward compatibility.
+		if v.TargetVersion == "" {
+			v.TargetVersion = "latest"
+		}
 	}
 
 	return &Runner{
@@ -205,7 +214,14 @@ func getHandlerParams(runnerConfig *RunnerConfig, config ScenarioConfig) (loadge
 
 		Protocol: protocol,
 		Datatype: datatype,
+
+		TargetStackVersion: targetStackVer(config),
 	}
 
 	return params, nil
+}
+
+func targetStackVer(config ScenarioConfig) supportedstacks.TargetStackVersion {
+	v, _ := supportedstacks.FromStringVersion(config.TargetVersion)
+	return v
 }

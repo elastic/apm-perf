@@ -48,4 +48,7 @@ type ScenarioConfig struct {
 	RewriteSpanNames          bool `yaml:"rewrite_span_names"`
 	RewriteTransactionNames   bool `yaml:"rewrite_transaction_names"`
 	RewriteTransactionTypes   bool `yaml:"rewrite_transaction_types"`
+
+	// TargetVersion indicates which Stack version this scenario targets.
+	TargetVersion string `yaml:"version"`
 }
