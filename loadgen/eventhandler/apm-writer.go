@@ -59,12 +59,12 @@ func writeAPMEvents(config Config, minTimestamp time.Time, w *eventWriter, b bat
 				if config.RewriteTimestamps && !event.timestamp.IsZero() {
 					switch config.TargetStackVersion {
 					case supportedstacks.TargetStackVersionUnknown:
-						// if uknown assume 8.x to keep backward compatibility
-						rewriteTimestamp8x(event, minTimestamp, baseTimestamp, w)
+						// if uknown assume latest to keep backward compatibility
+						rewriteTimestampLatest(event, minTimestamp, baseTimestamp, w)
 					case supportedstacks.TargetStackVersion7x:
 						rewriteTimestamp7x(event, minTimestamp, baseTimestamp, w)
-					case supportedstacks.TargetStackVersion8x:
-						rewriteTimestamp8x(event, minTimestamp, baseTimestamp, w)
+					case supportedstacks.TargetStackVersionLatest:
+						rewriteTimestampLatest(event, minTimestamp, baseTimestamp, w)
 					}
 				} else {
 					w.rewriteBuf.RawString(value.Raw)
@@ -149,7 +149,7 @@ func rewriteTimestamp7x(event event, minTimestamp time.Time, baseTimestamp time.
 	w.rewriteBuf.Uint64(uint64(timestamp.UnixMicro()))
 }
 
-func rewriteTimestamp8x(event event, minTimestamp time.Time, baseTimestamp time.Time, w *eventWriter) {
+func rewriteTimestampLatest(event event, minTimestamp time.Time, baseTimestamp time.Time, w *eventWriter) {
 	// We always encode rewritten timestamps as strings,
 	// so we don't lose any precision when offsetting by
 	// either the base timestamp, or the minimum timestamp

@@ -27,7 +27,7 @@ func DefaultConfig() Config {
 		RewriteIDs:        true,
 		RewriteTimestamps: true,
 		// default to 8.x to keep backward compatibility.
-		TargetStackVersion: supportedstacks.TargetStackVersion8x,
+		TargetStackVersion: supportedstacks.TargetStackVersionLatest,
 	}
 }
 
