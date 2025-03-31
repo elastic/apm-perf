@@ -21,6 +21,7 @@ const (
 	// or panics to alert the caller and user that an undefined
 	// or unexpected behavior may happen.
 	TargetStackVersionUnknown TargetStackVersion = iota
+	TargetStackVersionLatest
 	// TargetStackVersion7x identifies a generic 7.x.y version
 	TargetStackVersion7x
 	// TargetStackVersion8x identifies a generic 8.x.y version
@@ -48,7 +49,7 @@ const (
 func FromStringVersion(version string) (TargetStackVersion, error) {
 	switch version {
 	case latest:
-		return TargetStackVersion8x, nil
+		return TargetStackVersionLatest, nil
 	case generic7x:
 		return TargetStackVersion7x, nil
 	case generic8x:
