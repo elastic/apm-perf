@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/elastic/apm-perf/pkg/supportedstacks"
+
 	"github.com/tidwall/gjson"
 )
 
@@ -55,16 +57,15 @@ func writeAPMEvents(config Config, minTimestamp time.Time, w *eventWriter, b bat
 			switch key.Str {
 			case "timestamp":
 				if config.RewriteTimestamps && !event.timestamp.IsZero() {
-					// We always encode rewritten timestamps as strings,
-					// so we don't lose any precision when offsetting by
-					// either the base timestamp, or the minimum timestamp
-					// across all the batches; string-formatted timestamps
-					// may have nanosecond precision.
-					offset := event.timestamp.Sub(minTimestamp)
-					timestamp := baseTimestamp.Add(offset)
-					w.rewriteBuf.RawByte('"')
-					w.rewriteBuf.Time(timestamp, time.RFC3339Nano)
-					w.rewriteBuf.RawByte('"')
+					switch config.TargetStackVersion {
+					case supportedstacks.TargetStackVersionUnknown:
+						// if uknown assume latest to keep backward compatibility
+						rewriteTimestampLatest(event, minTimestamp, baseTimestamp, w)
+					case supportedstacks.TargetStackVersion7x:
+						rewriteTimestamp7x(event, minTimestamp, baseTimestamp, w)
+					case supportedstacks.TargetStackVersionLatest:
+						rewriteTimestampLatest(event, minTimestamp, baseTimestamp, w)
+					}
 				} else {
 					w.rewriteBuf.RawString(value.Raw)
 				}
@@ -137,4 +138,26 @@ func writeAPMEvents(config Config, minTimestamp time.Time, w *eventWriter, b bat
 		w.rewriteBuf.Reset()
 	}
 	return nil
+}
+
+func rewriteTimestamp7x(event event, minTimestamp time.Time, baseTimestamp time.Time, w *eventWriter) {
+	// 7.x does not support receiving string based timestamps
+	offset := event.timestamp.Sub(minTimestamp)
+	timestamp := baseTimestamp.Add(offset)
+	// The timestamp is in microseconds:
+	// https://github.com/elastic/apm-server/blob/7.17/model/modeldecoder/v2/model.go#L611
+	w.rewriteBuf.Uint64(uint64(timestamp.UnixMicro()))
+}
+
+func rewriteTimestampLatest(event event, minTimestamp time.Time, baseTimestamp time.Time, w *eventWriter) {
+	// We always encode rewritten timestamps as strings,
+	// so we don't lose any precision when offsetting by
+	// either the base timestamp, or the minimum timestamp
+	// across all the batches; string-formatted timestamps
+	// may have nanosecond precision.
+	offset := event.timestamp.Sub(minTimestamp)
+	timestamp := baseTimestamp.Add(offset)
+	w.rewriteBuf.RawByte('"')
+	w.rewriteBuf.Time(timestamp, time.RFC3339Nano)
+	w.rewriteBuf.RawByte('"')
 }

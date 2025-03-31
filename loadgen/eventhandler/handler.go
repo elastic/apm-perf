@@ -21,6 +21,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/elastic/apm-perf/pkg/supportedstacks"
+
 	"github.com/klauspost/compress/zlib"
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
@@ -155,10 +157,17 @@ type Config struct {
 	// RewriteTransactionTypes controls the rewriting of `transaction.type`
 	// in events.
 	RewriteTransactionTypes bool
+	// TargetStackVersion represents the version of the stack that event
+	// generation is targetting. This allows to tailor the geneator behavior
+	// if needed (es rewriting timestamps).
+	TargetStackVersion supportedstacks.TargetStackVersion
 }
 
 // New creates a new Handler with config.
 func New(logger *zap.Logger, config Config, ec EventCollector) (*Handler, error) {
+	if config.Path == "" {
+		return nil, fmt.Errorf("eventhandler: path is required")
+	}
 	if config.Transport == nil {
 		return nil, errors.New("empty transport received")
 	}
@@ -228,7 +237,7 @@ func New(logger *zap.Logger, config Config, ec EventCollector) (*Handler, error)
 		}
 	}
 	if len(h.batches) == 0 {
-		return nil, errors.New("eventhandler: glob matched no files, please specify a valid glob pattern")
+		return nil, fmt.Errorf("eventhandler: found no elements to replay from %s", config.Path)
 	}
 
 	logger.Debug("collected batches", zap.Int("size", len(h.batches)))
