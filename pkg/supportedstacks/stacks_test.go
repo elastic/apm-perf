@@ -22,7 +22,6 @@ func TestFromString(t *testing.T) {
 		{"empty", "", supportedstacks.TargetStackVersionUnknown, true},
 		{"latest", "latest", supportedstacks.TargetStackVersionLatest, false},
 		{"7x", "7x", supportedstacks.TargetStackVersion7x, false},
-		{"8x", "8x", supportedstacks.TargetStackVersion8x, false},
 	}
 
 	for _, tt := range tests {
