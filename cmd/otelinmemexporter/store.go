@@ -20,20 +20,33 @@ import (
 type AggregationType string
 
 const (
-	Last AggregationType = "last"
-	Sum  AggregationType = "sum"
-	Rate AggregationType = "rate"
+	Last       AggregationType = "last" // only for number
+	Rate       AggregationType = "rate" // only for number
+	Sum        AggregationType = "sum"
+	Percentile AggregationType = "percentile" // only for histogram
 )
 
-// Store is a in-memory data store for telemetry data. Data
+type metric interface {
+	pmetric.NumberDataPoint | pmetric.HistogramDataPoint
+}
+
+type (
+	metricNameToAggConfigs map[string][]AggregationConfig
+	keyToAggConfig         map[string]*AggregationConfig
+
+	keyToGroupToMetric[T metric] map[string]map[string]T
+)
+
+// Store is an in-memory data store for telemetry data. Data
 // exported from the in-memory exporter will be aggregated
 // in the Store and queried from the store. Store only stores
 // a specfic set of entries specified during creation.
 type Store struct {
 	sync.RWMutex
-	nameM map[string][]AggregationConfig // keys are metric names
-	keyM  map[string]*AggregationConfig
-	nums  map[string]map[string]pmetric.NumberDataPoint
+	nameM metricNameToAggConfigs
+	keyM  keyToAggConfig
+	nums  keyToGroupToMetric[pmetric.NumberDataPoint]
+	hists keyToGroupToMetric[pmetric.HistogramDataPoint]
 
 	logger *zap.Logger
 }
@@ -66,6 +79,11 @@ type AggregationConfig struct {
 	// combination of name and label values.
 	Type AggregationType `mapstructure:"aggregation_type"`
 
+	// Percentile defines the aggregation percentile to use if
+	// Type is "percentile". It will be used for calculating the
+	// percentile of histograms. Must be in range `(0., 100.]`.
+	Percentile float64 `mapstructure:"percentile"`
+
 	// GroupBy allows grouping the metrics by a specific key. An
 	// empty value for group by signifies no grouping.
 	GroupBy string `mapstructure:"group_by"`
@@ -78,6 +96,7 @@ func (cfg *AggregationConfig) MarshalLogObject(enc zapcore.ObjectEncoder) error 
 	enc.AddString("type", string(cfg.Type))
 	enc.AddString("key", cfg.Key)
 	enc.AddString("group_by", cfg.GroupBy)
+	enc.AddFloat64("percentile", cfg.Percentile)
 	enc.AddObject("label_values", zapcore.ObjectMarshalerFunc(
 		func(enc zapcore.ObjectEncoder) error {
 			for l, v := range cfg.MatchLabelValues {
@@ -128,15 +147,25 @@ func (cfg *AggregationConfig) isEqual(
 // NewStore creates a new in memory metric store. Returns an
 // error if the provided config is invalid.
 func NewStore(aggs []AggregationConfig, logger *zap.Logger) (*Store, error) {
-	store, err := validateAggregationConfig(aggs)
+	keyM, nameM, err := validateAndGroupAggregationConfigs(aggs)
 	if err != nil {
 		return nil, err
 	}
-	store.logger = logger
-	return store, nil
+	return &Store{
+		keyM:   keyM,
+		nameM:  nameM,
+		logger: logger,
+	}, nil
 }
 
 // Add adds metrics to the store.
+// The metrics must be of delta temporality, otherwise they will be ignored with warning.
+//
+// Two kinds of metrics are supported, each with different aggregations:
+//  1. pmetric.Sum / pmetric.Gauge (aggregation: Last, Sum, Rate)
+//  2. pmetric.Histogram (aggregation: Percentile, Sum)
+//
+// Unsupported metric-aggregation combinations will be ignored with warning.
 func (s *Store) Add(ld pmetric.Metrics) {
 	s.Lock()
 	defer s.Unlock()
@@ -163,18 +192,24 @@ func (s *Store) GetAll() map[string]map[string]float64 {
 	s.RLock()
 	defer s.RUnlock()
 
-	m := make(map[string]map[string]float64, len(s.nums))
+	m := make(map[string]map[string]float64, len(s.nums)+len(s.hists))
 	for key, cfg := range s.keyM {
-		dpByGrp, ok := s.nums[key]
-		if !ok {
+		numDPByGrp, numExist := s.nums[key]
+		histDPByGrp, histExist := s.hists[key]
+		if !numExist && !histExist {
 			m[key] = map[string]float64{"": 0}
 			continue
 		}
-		m[key] = make(map[string]float64, len(dpByGrp))
-		for grp, dp := range dpByGrp {
-			m[key][grp] = getByType(cfg.Type, dp)
+
+		m[key] = make(map[string]float64, len(numDPByGrp)+len(histDPByGrp))
+		for grp, dp := range numDPByGrp {
+			m[key][grp] = getNumAggByType(cfg.Type, dp)
+		}
+		for grp, dp := range histDPByGrp {
+			m[key][grp] = getHistAggByType(cfg.Type, cfg.Percentile, dp)
 		}
 	}
+
 	return m
 }
 
@@ -191,15 +226,20 @@ func (s *Store) Get(key string) (map[string]float64, error) {
 		return nil, fmt.Errorf("key %s is not configured", key)
 	}
 
-	dpByGrp, ok := s.nums[key]
-	if !ok {
+	numDPByGrp, numExist := s.nums[key]
+	histDPByGrp, histExist := s.hists[key]
+	if !numExist && !histExist {
 		return map[string]float64{"": 0}, nil
 	}
 
-	m := make(map[string]float64, len(dpByGrp))
-	for k, dp := range dpByGrp {
-		m[k] = getByType(cfg.Type, dp)
+	m := make(map[string]float64, len(numDPByGrp)+len(histDPByGrp))
+	for k, dp := range numDPByGrp {
+		m[k] = getNumAggByType(cfg.Type, dp)
 	}
+	for k, dp := range histDPByGrp {
+		m[k] = getHistAggByType(cfg.Type, cfg.Percentile, dp)
+	}
+
 	return m, nil
 }
 
@@ -238,6 +278,16 @@ func (s *Store) add(m pmetric.Metric, resAttrs pcommon.Map) {
 			return
 		}
 		s.mergeNumberDataPoints(m.Name(), m.Sum().DataPoints(), resAttrs)
+	case pmetric.MetricTypeHistogram:
+		if m.Histogram().AggregationTemporality() == pmetric.AggregationTemporalityCumulative {
+			s.logger.Warn(
+				"unexpected, all cumulative temporality should be converted to delta",
+				zap.String("name", m.Name()),
+				zap.String("type", m.Type().String()),
+			)
+			return
+		}
+		s.mergeHistogramDataPoints(m.Name(), m.Histogram().DataPoints(), resAttrs)
 	default:
 		s.logger.Warn(
 			"metric type not implemented",
@@ -259,14 +309,7 @@ func (s *Store) mergeNumberDataPoints(
 		dp := from.At(i)
 		attrs := dp.Attributes()
 		for _, cfg := range s.filterCfgs(name, attrs, resAttrs) {
-			grp := getValueFromMaps(cfg.GroupBy, attrs, resAttrs).AsString()
-			if _, ok := s.nums[cfg.Key]; !ok {
-				s.nums[cfg.Key] = make(map[string]pmetric.NumberDataPoint)
-			}
-			if _, ok := s.nums[cfg.Key][grp]; !ok {
-				s.nums[cfg.Key][grp] = pmetric.NewNumberDataPoint()
-			}
-			to := s.nums[cfg.Key][grp]
+			to := getMergeTo(s.nums, pmetric.NewNumberDataPoint, cfg, attrs, resAttrs)
 			switch cfg.Type {
 			case Last:
 				to.SetDoubleValue(doubleValue(dp))
@@ -292,8 +335,79 @@ func (s *Store) mergeNumberDataPoints(
 						to.SetTimestamp(dp.Timestamp())
 					}
 				}
+			default:
+				s.logger.Warn(
+					"aggregation type not available for number data points",
+					zap.String("name", name),
+					zap.String("agg_type", string(cfg.Type)),
+				)
 			}
 		}
+	}
+}
+
+func getNumAggByType(typ AggregationType, dp pmetric.NumberDataPoint) float64 {
+	switch typ {
+	case Rate:
+		if dp.DoubleValue() == 0 {
+			return 0
+		}
+		duration := time.Duration(dp.Timestamp() - dp.StartTimestamp()).Seconds()
+		if duration <= 0 {
+			return 0
+		}
+		return dp.DoubleValue() / duration
+	case Last, Sum:
+		return dp.DoubleValue()
+	default:
+		// Should not be able to reach here since it should be aborted on consuming metrics.
+		return 0
+	}
+}
+
+func (s *Store) mergeHistogramDataPoints(
+	name string,
+	from pmetric.HistogramDataPointSlice,
+	resAttrs pcommon.Map,
+) {
+	if s.hists == nil {
+		s.hists = make(keyToGroupToMetric[pmetric.HistogramDataPoint])
+	}
+
+	for i := 0; i < from.Len(); i++ {
+		fromDP := from.At(i)
+		if fromDP.Count() == 0 {
+			// Skip histogram data points with no population.
+			continue
+		}
+
+		attrs := fromDP.Attributes()
+		for _, cfg := range s.filterCfgs(name, attrs, resAttrs) {
+			toDP := getMergeTo(s.hists, pmetric.NewHistogramDataPoint, cfg, attrs, resAttrs)
+			switch cfg.Type {
+			case Sum, Percentile:
+				addHistogramDataPoint(fromDP, toDP)
+			default:
+				s.logger.Warn(
+					"aggregation type not available for histogram data points",
+					zap.String("name", name),
+					zap.String("agg_type", string(cfg.Type)),
+				)
+			}
+		}
+	}
+}
+
+func getHistAggByType(typ AggregationType, p float64, dp pmetric.HistogramDataPoint) float64 {
+	switch typ {
+	case Percentile:
+		// Need to convert percentile to quantile.
+		return deltaExplicitBucketsQuantile(p/100, explicitBucketsFromHistogramDataPoint(dp))
+	case Sum:
+		return dp.Sum()
+	default:
+		// Should not be able to reach here since it should be aborted on consuming metrics.
+		return 0
 	}
 }
 
@@ -314,47 +428,54 @@ func (s *Store) filterCfgs(
 	return result
 }
 
-func getByType(typ AggregationType, dp pmetric.NumberDataPoint) float64 {
-	switch typ {
-	case Rate:
-		if dp.DoubleValue() == 0 {
-			return 0
-		}
-		duration := time.Duration(dp.Timestamp() - dp.StartTimestamp()).Seconds()
-		if duration <= 0 {
-			return 0
-		}
-		return dp.DoubleValue() / duration
-	default:
-		return dp.DoubleValue()
+func getMergeTo[T metric](
+	m keyToGroupToMetric[T],
+	initFn func() T,
+	cfg AggregationConfig,
+	attrs, resAttrs pcommon.Map,
+) T {
+	grp := getValueFromMaps(cfg.GroupBy, attrs, resAttrs).AsString()
+	if _, ok := m[cfg.Key]; !ok {
+		m[cfg.Key] = make(map[string]T)
 	}
+	if _, ok := m[cfg.Key][grp]; !ok {
+		m[cfg.Key][grp] = initFn()
+	}
+	return m[cfg.Key][grp]
 }
 
-func validateAggregationConfig(src []AggregationConfig) (*Store, error) {
+func validateAndGroupAggregationConfigs(src []AggregationConfig) (keyToAggConfig, metricNameToAggConfigs, error) {
 	nameM := make(map[string][]AggregationConfig)
 	keyM := make(map[string]*AggregationConfig)
 	for i := range src {
 		srcCfg := src[i]
+		if srcCfg.Type == Percentile && (srcCfg.Percentile <= 0 || srcCfg.Percentile > 100) {
+			return nil, nil, fmt.Errorf("invalid aggregation percentile %f", srcCfg.Percentile)
+		}
+
 		if toCfgs, ok := nameM[srcCfg.Name]; ok {
 			for _, toCfg := range toCfgs {
 				if toCfg.isEqualIgnoringType(srcCfg) {
 					if toCfg.Type != srcCfg.Type {
-						return nil, fmt.Errorf("cannot record same metric with different types: %s", srcCfg.Name)
+						return nil, nil, fmt.Errorf(
+							"cannot record same metric with different types: %s", srcCfg.Name)
 					}
-					return nil, fmt.Errorf("duplicate config found: %s", srcCfg.Name)
+					return nil, nil, fmt.Errorf(
+						"duplicate config found: %s", srcCfg.Name)
 				}
 			}
 		}
+
 		if _, seen := keyM[srcCfg.Key]; seen {
-			return nil, fmt.Errorf("key should be unique, found duplicate: %s", srcCfg.Key)
+			return nil, nil, fmt.Errorf(
+				"key should be unique, found duplicate: %s", srcCfg.Key)
 		}
+
 		nameM[srcCfg.Name] = append(nameM[srcCfg.Name], srcCfg)
 		keyM[srcCfg.Key] = &srcCfg
 	}
-	return &Store{
-		nameM: nameM,
-		keyM:  keyM,
-	}, nil
+
+	return keyM, nameM, nil
 }
 
 func doubleValue(dp pmetric.NumberDataPoint) float64 {

@@ -21,7 +21,7 @@ type inMemExporter struct {
 	logger *zap.Logger
 }
 
-func new(cfg Config, store *Store, logger *zap.Logger) *inMemExporter {
+func newInMemExporter(cfg Config, store *Store, logger *zap.Logger) *inMemExporter {
 	return &inMemExporter{
 		cfg:    cfg,
 		store:  store,
