@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 	"golang.org/x/sync/errgroup"
 	"gopkg.in/yaml.v3"
 
@@ -39,6 +40,40 @@ type RunnerConfig struct {
 	// until a signal is received to stop it.
 	RunForever  bool
 	RunDuration time.Duration
+}
+
+// redact redacts the passed string, keeping only the first 4
+// chars and appending -REDACTED to it.
+// It handles empty string by returning a fixed value: EMPTY.
+// If the string has less than 4 characters returns EMPTY; as
+// this function is expected to be run on secrets, we don't
+// expect any string smaller than 4 characters.
+func redact(v string) string {
+	redacted := "EMPTY"
+	if v != "" && len(v) >= 4 {
+		redacted = v[:4] + "-REDACTED"
+	}
+	return redacted
+}
+
+func (r RunnerConfig) MarshalLogObject(e zapcore.ObjectEncoder) (_ error) {
+	e.AddString("scenario", r.Scenario)
+	e.AddString("scenarios_path", r.ScenariosPath)
+	e.AddString("server_url", r.ServerURL)
+	e.AddString("secret_token", redact(r.SecretToken))
+	for k, v := range r.APIKeys {
+		// add API keys but redact full value. This will retain project information and
+		// provide a hint of the key value.
+		zap.String(fmt.Sprintf("apikey[%s]", k), redact(v)).AddTo(e)
+	}
+	for k, v := range r.Headers {
+		zap.String(fmt.Sprintf("headers[%s]", k), v).AddTo(e)
+	}
+	e.AddBool("bypass_proxy", r.BypassProxy)
+	e.AddBool("ignore_errors", r.IgnoreErrors)
+	e.AddBool("run_forever", r.RunForever)
+
+	return nil
 }
 
 type Runner struct {
