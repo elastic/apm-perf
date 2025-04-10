@@ -102,6 +102,8 @@ func NewCmdRun() *cobra.Command {
 				logger.Fatal("Fail to parse flags", zap.Error(err))
 			}
 
+			logger.Debug("parsed configs", zap.Object("config", config))
+
 			runner, err := soaktest.NewRunner(config, logger)
 			if err != nil {
 				logger.Fatal("Fail to initialize runner", zap.Error(err))
