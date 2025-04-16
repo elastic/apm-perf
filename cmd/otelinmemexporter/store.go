@@ -5,6 +5,7 @@
 package otelinmemexporter
 
 import (
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -18,6 +19,10 @@ import (
 // AggregationType defines the type of aggregation the store
 // will perform on a filtered metrics.
 type AggregationType string
+
+func (agg AggregationType) IsValid() bool {
+	return agg == Last || agg == Rate || agg == Sum || agg == Percentile
+}
 
 const (
 	Last       AggregationType = "last" // only for number
@@ -109,23 +114,26 @@ func (cfg *AggregationConfig) MarshalLogObject(enc zapcore.ObjectEncoder) error 
 	return nil
 }
 
-func (cfg *AggregationConfig) isEqualIgnoringType(target AggregationConfig) bool {
-	if cfg.Name != target.Name {
-		return false
+func (cfg *AggregationConfig) validate() error {
+	if cfg.Name == "" {
+		return errors.New("aggregation config must have name")
 	}
-	if len(cfg.MatchLabelValues) != len(target.MatchLabelValues) {
-		return false
+	if cfg.Key == "" {
+		return errors.New("aggregation config must have key")
 	}
-	for k, v := range cfg.MatchLabelValues {
-		targetV, ok := target.MatchLabelValues[k]
-		if !ok || v != targetV {
-			return false
+	if !cfg.Type.IsValid() {
+		return fmt.Errorf("aggregation config %s invalid type: %s", cfg.Key, cfg.Type)
+	}
+	if cfg.Type == Percentile {
+		if cfg.Percentile <= 0 || cfg.Percentile > 100 {
+			return fmt.Errorf("aggregation config %s invalid aggregation percentile %f", cfg.Key, cfg.Percentile)
 		}
 	}
-	return true
+
+	return nil
 }
 
-func (cfg *AggregationConfig) isEqual(
+func (cfg *AggregationConfig) isEqualAttrs(
 	name string,
 	attrs, resAttrs pcommon.Map,
 ) bool {
@@ -421,7 +429,7 @@ func (s *Store) filterCfgs(
 	}
 	var result []AggregationConfig
 	for _, cfg := range cfgs {
-		if cfg.isEqual(name, attrs, resAttrs) {
+		if cfg.isEqualAttrs(name, attrs, resAttrs) {
 			result = append(result, cfg)
 		}
 	}
@@ -449,26 +457,21 @@ func validateAndGroupAggregationConfigs(src []AggregationConfig) (keyToAggConfig
 	keyM := make(map[string]*AggregationConfig)
 	for i := range src {
 		srcCfg := src[i]
-		if srcCfg.Type == Percentile && (srcCfg.Percentile <= 0 || srcCfg.Percentile > 100) {
-			return nil, nil, fmt.Errorf("invalid aggregation percentile %f", srcCfg.Percentile)
-		}
-
-		if toCfgs, ok := nameM[srcCfg.Name]; ok {
-			for _, toCfg := range toCfgs {
-				if toCfg.isEqualIgnoringType(srcCfg) {
-					if toCfg.Type != srcCfg.Type {
-						return nil, nil, fmt.Errorf(
-							"cannot record same metric with different types: %s", srcCfg.Name)
-					}
-					return nil, nil, fmt.Errorf(
-						"duplicate config found: %s", srcCfg.Name)
-				}
-			}
+		if err := srcCfg.validate(); err != nil {
+			return nil, nil, err
 		}
 
 		if _, seen := keyM[srcCfg.Key]; seen {
 			return nil, nil, fmt.Errorf(
 				"key should be unique, found duplicate: %s", srcCfg.Key)
+		}
+
+		if toCfgs, ok := nameM[srcCfg.Name]; ok {
+			for _, toCfg := range toCfgs {
+				if err := checkDuplicateAggConfigForName(toCfg, srcCfg); err != nil {
+					return nil, nil, err
+				}
+			}
 		}
 
 		nameM[srcCfg.Name] = append(nameM[srcCfg.Name], srcCfg)
@@ -478,14 +481,44 @@ func validateAndGroupAggregationConfigs(src []AggregationConfig) (keyToAggConfig
 	return keyM, nameM, nil
 }
 
+func checkDuplicateAggConfigForName(src, target AggregationConfig) error {
+	if src.Name != target.Name {
+		return nil
+	}
+
+	if len(src.MatchLabelValues) != len(target.MatchLabelValues) {
+		return nil
+	}
+
+	for k, v := range src.MatchLabelValues {
+		targetV, ok := target.MatchLabelValues[k]
+		if !ok || v != targetV {
+			return nil
+		}
+	}
+
+	if src.Type != target.Type {
+		return fmt.Errorf("cannot record same metric with different types: %s", src.Name)
+	}
+
+	if src.Type == Percentile && target.Type == Percentile {
+		if src.Percentile != target.Percentile {
+			return nil
+		}
+	}
+
+	return fmt.Errorf("duplicate config found for name: %s", src.Name)
+}
+
 func doubleValue(dp pmetric.NumberDataPoint) float64 {
 	switch dp.ValueType() {
 	case pmetric.NumberDataPointValueTypeDouble:
 		return dp.DoubleValue()
 	case pmetric.NumberDataPointValueTypeInt:
 		return float64(dp.IntValue())
+	default:
+		return 0
 	}
-	return 0
 }
 
 func getValueFromMaps(key string, maps ...pcommon.Map) pcommon.Value {
