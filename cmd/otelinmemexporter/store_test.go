@@ -20,7 +20,7 @@ const groupKey = "grp_key"
 
 func TestNewStore(t *testing.T) {
 	logger := zap.NewExample()
-	_, validCfg := getNumTestAggCfg()
+	_, validNumCfg := getNumTestAggCfg()
 	for _, tt := range []struct {
 		name   string
 		cfgs   []AggregationConfig
@@ -31,6 +31,7 @@ func TestNewStore(t *testing.T) {
 			cfgs: []AggregationConfig{
 				{
 					Name: "agg_cfg_1",
+					Key:  "agg1",
 					MatchLabelValues: map[string]string{
 						"k1": "v1",
 					},
@@ -38,6 +39,7 @@ func TestNewStore(t *testing.T) {
 				},
 				{
 					Name: "agg_cfg_1",
+					Key:  "agg2",
 					MatchLabelValues: map[string]string{
 						"k1": "v1",
 					},
@@ -47,10 +49,11 @@ func TestNewStore(t *testing.T) {
 			errMsg: "duplicate config found",
 		},
 		{
-			name: "duplicate_config_differnt_type",
+			name: "duplicate_config_different_type",
 			cfgs: []AggregationConfig{
 				{
 					Name: "agg_cfg_1",
+					Key:  "agg1",
 					MatchLabelValues: map[string]string{
 						"k1": "v1",
 					},
@@ -58,6 +61,7 @@ func TestNewStore(t *testing.T) {
 				},
 				{
 					Name: "agg_cfg_1",
+					Key:  "agg2",
 					MatchLabelValues: map[string]string{
 						"k1": "v1",
 					},
@@ -89,8 +93,25 @@ func TestNewStore(t *testing.T) {
 			errMsg: "key should be unique",
 		},
 		{
+			name: "different_percentile",
+			cfgs: []AggregationConfig{
+				{
+					Name:       "agg_cfg_1",
+					Key:        "agg50",
+					Type:       Percentile,
+					Percentile: 50.0,
+				},
+				{
+					Name:       "agg_cfg_1",
+					Key:        "agg99",
+					Type:       Percentile,
+					Percentile: 99.0,
+				},
+			},
+		},
+		{
 			name: "valid",
-			cfgs: validCfg,
+			cfgs: validNumCfg,
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
@@ -121,12 +142,12 @@ func TestAdd_NumberDataPoint(t *testing.T) {
 				startTime, startTime,
 			).get(),
 			expected: []map[string]float64{
-				map[string]float64{"": 0},
-				map[string]float64{"": 0},
-				map[string]float64{"": 0},
-				map[string]float64{"": 0},
-				map[string]float64{"": 0},
-				map[string]float64{"": 0},
+				{"": 0},
+				{"": 0},
+				{"": 0},
+				{"": 0},
+				{"": 0},
+				{"": 0},
 			},
 		},
 		{
@@ -148,12 +169,12 @@ func TestAdd_NumberDataPoint(t *testing.T) {
 					startTime.Add(2*time.Second), startTime.Add(3*time.Second),
 				).get(),
 			expected: []map[string]float64{
-				map[string]float64{"": 3.3},               // last
-				map[string]float64{"": 6.6},               // sum
-				map[string]float64{"": 2.2},               // rate
-				map[string]float64{"": 3.3, "grp1": 2.2},  // group_by last
-				map[string]float64{"": 3.3, "grp1": 3.3},  // group_by sum
-				map[string]float64{"": 3.3, "grp1": 1.65}, // group_by rate
+				{"": 3.3},               // last
+				{"": 6.6},               // sum
+				{"": 2.2},               // rate
+				{"": 3.3, "grp1": 2.2},  // group_by last
+				{"": 3.3, "grp1": 3.3},  // group_by sum
+				{"": 3.3, "grp1": 1.65}, // group_by rate
 			},
 		},
 		{
@@ -170,12 +191,12 @@ func TestAdd_NumberDataPoint(t *testing.T) {
 					startTime.Add(time.Second), startTime.Add(2*time.Second),
 				).get(),
 			expected: []map[string]float64{
-				map[string]float64{"": 2.2},      // last
-				map[string]float64{"": 3.3},      // sum
-				map[string]float64{"": 1.65},     // rate
-				map[string]float64{"grp1": 2.2},  // group_by last
-				map[string]float64{"grp1": 3.3},  // group_by sum
-				map[string]float64{"grp1": 1.65}, // group_by rate
+				{"": 2.2},      // last
+				{"": 3.3},      // sum
+				{"": 1.65},     // rate
+				{"grp1": 2.2},  // group_by last
+				{"grp1": 3.3},  // group_by sum
+				{"grp1": 1.65}, // group_by rate
 			},
 		},
 		{
@@ -206,12 +227,12 @@ func TestAdd_NumberDataPoint(t *testing.T) {
 					startTime, startTime,
 				).get(),
 			expected: []map[string]float64{
-				map[string]float64{"": 0},
-				map[string]float64{"": 0},
-				map[string]float64{"": 0},
-				map[string]float64{"": 0},
-				map[string]float64{"": 0},
-				map[string]float64{"": 0},
+				{"": 0},
+				{"": 0},
+				{"": 0},
+				{"": 0},
+				{"": 0},
+				{"": 0},
 			},
 		},
 		{
@@ -238,12 +259,12 @@ func TestAdd_NumberDataPoint(t *testing.T) {
 					startTime.Add(2*time.Second), startTime.Add(4*time.Second),
 				).get(),
 			expected: []map[string]float64{
-				map[string]float64{"": 4.4},                           // last
-				map[string]float64{"": 8.8},                           // sum
-				map[string]float64{"": 2.2},                           // rate
-				map[string]float64{"": 1.1, "grp1": 3.3, "grp2": 4.4}, // group_by last
-				map[string]float64{"": 1.1, "grp1": 3.3, "grp2": 4.4}, // group_by sum
-				map[string]float64{"": 1.1, "grp1": 3.3, "grp2": 2.2}, // group_by rate
+				{"": 4.4},                           // last
+				{"": 8.8},                           // sum
+				{"": 2.2},                           // rate
+				{"": 1.1, "grp1": 3.3, "grp2": 4.4}, // group_by last
+				{"": 1.1, "grp1": 3.3, "grp2": 4.4}, // group_by sum
+				{"": 1.1, "grp1": 3.3, "grp2": 2.2}, // group_by rate
 			},
 		},
 	} {
