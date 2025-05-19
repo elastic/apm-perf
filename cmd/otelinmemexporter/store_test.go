@@ -148,6 +148,7 @@ func TestAdd_NumberDataPoint(t *testing.T) {
 				{"": 0},
 				{"": 0},
 				{"": 0},
+				{"": 0},
 			},
 		},
 		{
@@ -175,6 +176,7 @@ func TestAdd_NumberDataPoint(t *testing.T) {
 				{"": 3.3, "grp1": 2.2},  // group_by last
 				{"": 3.3, "grp1": 3.3},  // group_by sum
 				{"": 3.3, "grp1": 1.65}, // group_by rate
+				{"": 3.3},               // max
 			},
 		},
 		{
@@ -197,6 +199,7 @@ func TestAdd_NumberDataPoint(t *testing.T) {
 				{"grp1": 2.2},  // group_by last
 				{"grp1": 3.3},  // group_by sum
 				{"grp1": 1.65}, // group_by rate
+				{"": 2.2},      // max
 			},
 		},
 		{
@@ -227,6 +230,7 @@ func TestAdd_NumberDataPoint(t *testing.T) {
 					startTime, startTime,
 				).get(),
 			expected: []map[string]float64{
+				{"": 0},
 				{"": 0},
 				{"": 0},
 				{"": 0},
@@ -265,6 +269,7 @@ func TestAdd_NumberDataPoint(t *testing.T) {
 				{"": 1.1, "grp1": 3.3, "grp2": 4.4}, // group_by last
 				{"": 1.1, "grp1": 3.3, "grp2": 4.4}, // group_by sum
 				{"": 1.1, "grp1": 3.3, "grp2": 2.2}, // group_by rate
+				{"": 4.4},                           // max
 			},
 		},
 	} {
@@ -666,6 +671,15 @@ func getNumTestAggCfg() ([]string, []AggregationConfig) {
 			Type:    Rate,
 			Key:     "k6",
 			GroupBy: groupKey,
+		},
+		{
+			Name: "test_max",
+			MatchLabelValues: map[string]string{
+				"k_1": "v_1",
+			},
+			Type:    Max,
+			Key:     "k7",
+			GroupBy: "",
 		},
 	}
 

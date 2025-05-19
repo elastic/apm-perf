@@ -1,6 +1,11 @@
 # OTEL in-memory exporter
 
-Aggregates collected metrics as per the configured aggregation type and exposes them via a HTTP endpoint. Current supported aggregation types are `last`, `sum`, and `rate`.
+Aggregates collected metrics as per the configured aggregation type and exposes them via a HTTP endpoint.
+
+Three kinds of metrics are supported, each with different aggregations:
+1. `pmetric.Sum` (aggregation: `last`, `sum`, `rate`, `max`)
+2. `pmetric.Gauge` (aggregation: `last`, `sum`, `rate`, `max`)
+3. `pmetric.Histogram` (aggregation: `percentile`, `sum`)
 
 ## Usage
 
