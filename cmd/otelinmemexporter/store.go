@@ -21,12 +21,13 @@ import (
 type AggregationType string
 
 func (agg AggregationType) IsValid() bool {
-	return agg == Last || agg == Rate || agg == Sum || agg == Percentile
+	return agg == Last || agg == Rate || agg == Max || agg == Sum || agg == Percentile
 }
 
 const (
 	Last       AggregationType = "last" // only for number
 	Rate       AggregationType = "rate" // only for number
+	Max        AggregationType = "max"  // only for number
 	Sum        AggregationType = "sum"
 	Percentile AggregationType = "percentile" // only for histogram
 )
@@ -169,9 +170,10 @@ func NewStore(aggs []AggregationConfig, logger *zap.Logger) (*Store, error) {
 // Add adds metrics to the store.
 // The metrics must be of delta temporality, otherwise they will be ignored with warning.
 //
-// Two kinds of metrics are supported, each with different aggregations:
-//  1. pmetric.Sum / pmetric.Gauge (aggregation: Last, Sum, Rate)
-//  2. pmetric.Histogram (aggregation: Percentile, Sum)
+// Three kinds of metrics are supported, each with different aggregations:
+//  1. pmetric.Sum (aggregation: Last, Sum, Rate, Max)
+//  2. pmetric.Gauge (aggregation: Last, Sum, Rate, Max)
+//  3. pmetric.Histogram (aggregation: Percentile, Sum)
 //
 // Unsupported metric-aggregation combinations will be ignored with warning.
 func (s *Store) Add(ld pmetric.Metrics) {
@@ -321,6 +323,11 @@ func (s *Store) mergeNumberDataPoints(
 			switch cfg.Type {
 			case Last:
 				to.SetDoubleValue(doubleValue(dp))
+			case Max:
+				newVal := doubleValue(dp)
+				if newVal > to.DoubleValue() {
+					to.SetDoubleValue(newVal)
+				}
 			case Sum:
 				to.SetDoubleValue(to.DoubleValue() + doubleValue(dp))
 			case Rate:
@@ -365,7 +372,7 @@ func getNumAggByType(typ AggregationType, dp pmetric.NumberDataPoint) float64 {
 			return 0
 		}
 		return dp.DoubleValue() / duration
-	case Last, Sum:
+	case Last, Sum, Max:
 		return dp.DoubleValue()
 	default:
 		// Should not be able to reach here since it should be aborted on consuming metrics.
