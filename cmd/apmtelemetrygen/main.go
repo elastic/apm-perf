@@ -9,6 +9,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"math/rand"
 	"os"
 	"os/signal"
@@ -70,9 +71,11 @@ func main() {
 	// Execute commands
 	if err := rootCmd.ExecuteContext(ctx); err != nil {
 		if !errors.Is(err, context.Canceled) {
-			fmt.Println(err)
+			log.Fatal(err)
 		}
+		os.Exit(130) // Signal CTRL-C exit
 	}
+	os.Exit(0)
 }
 
 type headersFlag map[string]string
