@@ -13,7 +13,7 @@ require (
 	go.elastic.co/apm/v2 v2.7.1
 	go.elastic.co/ecszap v1.0.3
 	go.elastic.co/fastjson v1.5.1
-	go.opentelemetry.io/collector/pdata v1.36.1
+	go.opentelemetry.io/collector/pdata v1.37.0
 	go.opentelemetry.io/collector/semconv v0.128.0
 	go.opentelemetry.io/otel v1.37.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v1.37.0
@@ -28,7 +28,7 @@ require (
 	go.uber.org/zap v1.27.0
 	golang.org/x/sync v0.16.0
 	golang.org/x/time v0.12.0
-	google.golang.org/grpc v1.74.0
+	google.golang.org/grpc v1.74.2
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -48,7 +48,7 @@ require (
 	github.com/joeshaw/multierror v0.0.0-20140124173710-69b34d4ec901 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
-	github.com/modern-go/reflect2 v1.0.2 // indirect
+	github.com/modern-go/reflect2 v1.0.3-0.20250322232337-35a7c28c31ee // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/procfs v0.12.0 // indirect
