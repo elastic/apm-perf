@@ -6,6 +6,7 @@
 package loadgen
 
 import (
+	"crypto/tls"
 	"embed"
 	"fmt"
 	"math/rand"
@@ -57,6 +58,9 @@ type EventHandlerParams struct {
 	// between each value. When using Protocol otlp/http
 	// each data type requires a separate EventHandler.
 	Datatype string
+
+	// Insecure determines if the client should skip TLS verification.
+	Insecure bool
 
 	supportedstacks.TargetStackVersion
 }
@@ -110,9 +114,16 @@ func NewEventHandler(p EventHandlerParams) (*eventhandler.Handler, error) {
 }
 
 func newAPMEventHandler(p EventHandlerParams) (*eventhandler.Handler, error) {
+	var tlsConfig *tls.Config
+	if p.Insecure {
+		tlsConfig = &tls.Config{InsecureSkipVerify: true}
+	}
+
 	// We call the HTTPTransport constructor to avoid copying all the config
 	// parsing that creates the `*http.Client`.
-	t, err := transport.NewHTTPTransport(transport.HTTPTransportOptions{})
+	t, err := transport.NewHTTPTransport(transport.HTTPTransportOptions{
+		TLSClientConfig: tlsConfig,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("cannot create HTTP transport: %w", err)
 	}

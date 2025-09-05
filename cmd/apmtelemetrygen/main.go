@@ -143,6 +143,7 @@ func newRunCmd() *cobra.Command {
 	cmd.Flags().BoolVar(&options.IgnoreErrors, "ignore-errors", false, "Ignore HTTP errors while sending events")
 	cmd.Flags().BoolVar(&options.RewriteIDs, "rewrite-ids", true, "Enable or disable rewriting IDs of stored events in ouput.")
 	cmd.Flags().BoolVar(&options.RewriteTimestamps, "rewrite-timestamps", true, "Enable or disable rewriting timestamps of stored events in ouput.")
+	cmd.Flags().BoolVar(&options.Insecure, "insecure", false, "Skip remote server TLS certificate verification.")
 	return &cmd
 }
 
@@ -165,6 +166,7 @@ type runOptions struct {
 	// This allows replaying the data with no variance on event timestamps.
 	// Useful for troubleshooting.
 	RewriteTimestamps bool
+	Insecure          bool
 }
 
 func (opts *runOptions) toEventHandlerParams(logger *zap.Logger) (loadgen.EventHandlerParams, error) {
@@ -188,6 +190,7 @@ func (opts *runOptions) toEventHandlerParams(logger *zap.Logger) (loadgen.EventH
 
 		RewriteIDs:        opts.RewriteIDs,
 		RewriteTimestamps: opts.RewriteTimestamps,
+		Insecure:          opts.Insecure,
 	}, nil
 }
 
