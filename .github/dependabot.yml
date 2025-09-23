@@ -9,6 +9,7 @@ updates:
       otel:
         patterns:
         - "go.opentelemetry.io/*"
+        - "github.com/open-telemetry/*"
       spf13:
         patterns:
         - "github.com/spf13/*"
@@ -32,6 +33,7 @@ updates:
       otel:
         patterns:
         - "go.opentelemetry.io/*"
+        - "github.com/open-telemetry/*"
       golang.org/x/:
         patterns:
         - "golang.org/x/*"
