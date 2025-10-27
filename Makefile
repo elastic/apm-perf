@@ -38,7 +38,7 @@ test: go.mod
 	go test -race -v ./...
 
 .PHONY: package
-package: BASE_IMAGE_VERSION=$$(cat .go-version)
+package: BASE_IMAGE_VERSION=$$(go list -m -f "{{.Version}}" go)
 package: COMMIT_SHA_SHORT=$$(git rev-parse --short HEAD)
 package: COMMIT_SHA=$$(git rev-parse HEAD)
 package: CURRENT_TIME_ISO=$$(date -u +"%Y-%m-%dT%H:%M:%SZ")
