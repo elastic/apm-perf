@@ -19,11 +19,6 @@ updates:
       go-agent:
         patterns:
         - "go.elastic.co/apm*"
-  # go tools
-  - package-ecosystem: "gomod"
-    directory: "tools/"
-    schedule:
-      interval: "weekly"
   # otelinmemexporter
   - package-ecosystem: "gomod"
     directory: "cmd/otelinmemexporter/"

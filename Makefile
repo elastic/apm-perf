@@ -7,16 +7,16 @@ MODULE_DEPS=$(sort $(shell go list -deps -tags=darwin,linux,windows -f "{{with .
 
 all: test
 
-fmt: tools/go.mod
-	@go run -modfile=tools/go.mod github.com/elastic/go-licenser -license=Elasticv2 -exclude internal/telemetrygen .
-	@go run -modfile=tools/go.mod golang.org/x/tools/cmd/goimports -local github.com/elastic/ -w .
+fmt:
+	@go tool github.com/elastic/go-licenser -license=Elasticv2 -exclude internal/telemetrygen .
+	@go tool golang.org/x/tools/cmd/goimports -local github.com/elastic/ -w .
 
-lint: tools/go.mod
-	go run -modfile=tools/go.mod honnef.co/go/tools/cmd/staticcheck -checks=all ./...
-	go list -m -json $(MODULE_DEPS) | go run -modfile=tools/go.mod go.elastic.co/go-licence-detector \
+lint:
+	go tool honnef.co/go/tools/cmd/staticcheck -checks=all ./...
+	go list -m -json $(MODULE_DEPS) | go tool go.elastic.co/go-licence-detector \
 		-includeIndirect \
 		-rules tools/notice/rules.json
-	go mod tidy && git diff --exit-code
+	go mod tidy -diff
 
 .PHONY: clean
 clean:
@@ -38,7 +38,7 @@ test: go.mod
 	go test -race -v ./...
 
 .PHONY: package
-package: BASE_IMAGE_VERSION=$$(cat .go-version)
+package: BASE_IMAGE_VERSION=$$(go list -m -f "{{.Version}}" go)
 package: COMMIT_SHA_SHORT=$$(git rev-parse --short HEAD)
 package: COMMIT_SHA=$$(git rev-parse HEAD)
 package: CURRENT_TIME_ISO=$$(date -u +"%Y-%m-%dT%H:%M:%SZ")
@@ -72,8 +72,8 @@ publish:
 	docker push $(CONTAINER_IMAGE_BASE_REF):latest
 
 notice: NOTICE.txt
-NOTICE.txt: go.mod tools/go.mod
-	go list -m -json $(MODULE_DEPS) | go run -modfile=tools/go.mod go.elastic.co/go-licence-detector \
+NOTICE.txt: go.mod
+	go list -m -json $(MODULE_DEPS) | go tool go.elastic.co/go-licence-detector \
 		-includeIndirect \
 		-rules tools/notice/rules.json \
 		-noticeTemplate tools/notice/NOTICE.txt.tmpl \
