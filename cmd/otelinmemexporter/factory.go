@@ -56,6 +56,6 @@ func createMetricsExporter(
 		// Disable Timeout/RetryOnFailure and SendingQueue
 		exporterhelper.WithTimeout(exporterhelper.TimeoutConfig{Timeout: 0}),
 		exporterhelper.WithRetry(configretry.BackOffConfig{Enabled: false}),
-		exporterhelper.WithQueue(exporterhelper.QueueConfig{Enabled: false}),
+		exporterhelper.WithQueue(exporterhelper.QueueBatchConfig{Enabled: false}),
 	)
 }
