@@ -16,7 +16,7 @@ lint:
 	go list -m -json $(MODULE_DEPS) | go tool go.elastic.co/go-licence-detector \
 		-includeIndirect \
 		-rules tools/notice/rules.json
-	go mod tidy -diff
+	find . -name go.mod -execdir sh -c 'go mod tidy -diff' sh {} +
 
 .PHONY: clean
 clean:
@@ -35,7 +35,7 @@ build:
 
 .PHONY: test
 test: go.mod
-	go test -race -v ./...
+	find . -name go.mod -execdir sh -c 'go test -race -v ./...' sh {} +
 
 .PHONY: package
 package: BASE_IMAGE_VERSION=$$(go list -m -f "{{.Version}}" go)
