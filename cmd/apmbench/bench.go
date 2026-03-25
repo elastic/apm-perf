@@ -6,6 +6,7 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"net/url"
@@ -98,10 +99,15 @@ func Benchmark10000AggregationGroups(b *testing.B, l *rate.Limiter) {
 }
 
 func newTracer(tb testing.TB) *apm.Tracer {
+	var tlsConfig *tls.Config
+	if !loadgencfg.Config.Secure {
+		tlsConfig = &tls.Config{InsecureSkipVerify: true}
+	}
 	httpTransport, err := transport.NewHTTPTransport(transport.HTTPTransportOptions{
-		ServerURLs:  []*url.URL{loadgencfg.Config.ServerURL},
-		APIKey:      loadgencfg.Config.APIKey,
-		SecretToken: loadgencfg.Config.SecretToken,
+		ServerURLs:      []*url.URL{loadgencfg.Config.ServerURL},
+		APIKey:          loadgencfg.Config.APIKey,
+		SecretToken:     loadgencfg.Config.SecretToken,
+		TLSClientConfig: tlsConfig,
 	})
 	if err != nil {
 		// panicing ensures that the error is reported
@@ -137,6 +143,7 @@ func newEventHandler(tb testing.TB, p string, l *rate.Limiter) *eventhandler.Han
 		RewriteTimestamps: loadgencfg.Config.RewriteTimestamps,
 		Headers:           loadgencfg.Config.Headers,
 		Protocol:          protocol,
+		Insecure:          !loadgencfg.Config.Secure,
 	})
 	if err != nil {
 		// panicing ensures that the error is reported
