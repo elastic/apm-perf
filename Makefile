@@ -1,6 +1,5 @@
 .DEFAULT_GOAL := all
 
-STATES_DIR=$(CURDIR)/.states
 DIST_DIR=$(CURDIR)/dist
 CONTAINER_IMAGE_BASE_REF="docker.elastic.co/observability-ci/apm-perf"
 MODULE_DEPS=$(sort $(shell go list -deps -tags=darwin,linux,windows -f "{{with .Module}}{{if not .Main}}{{.Path}}{{end}}{{end}}" ./...))
@@ -37,39 +36,28 @@ build:
 test: go.mod
 	find . -name go.mod -execdir sh -c 'go test -race -v ./...' sh {} +
 
-.PHONY: package
-package: BASE_IMAGE_VERSION=$$(go list -m -f "{{.Version}}" go)
-package: COMMIT_SHA_SHORT=$$(git rev-parse --short HEAD)
-package: COMMIT_SHA=$$(git rev-parse HEAD)
-package: CURRENT_TIME_ISO=$$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-package: CURRENT_TIME=$$(date +%s)
-package: IMAGE_ID=$${IMAGE_VERSION:-latest}-$(CURRENT_TIME)-$(COMMIT_SHA_SHORT)
-package: IMAGE_REF=$(CONTAINER_IMAGE_BASE_REF):$(IMAGE_ID)
-package: PROJECT_URL=$$(go list -m all | head -1)
-package:
-	mkdir -p $(STATES_DIR)
-	echo "$(IMAGE_REF)" > "$(STATES_DIR)/image_ref"
-	docker build \
+.PHONY: publish
+publish: BASE_IMAGE_VERSION=$$(go list -m -f "{{.Version}}" go)
+publish: COMMIT_SHA_SHORT=$$(git rev-parse --short HEAD)
+publish: COMMIT_SHA=$$(git rev-parse HEAD)
+publish: CURRENT_TIME_ISO=$$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+publish: CURRENT_TIME=$$(date +%s)
+publish: IMAGE_ID=$${IMAGE_VERSION:-latest}-$(CURRENT_TIME)-$(COMMIT_SHA_SHORT)
+publish: IMAGE_REF=$(CONTAINER_IMAGE_BASE_REF):$(IMAGE_ID)
+publish: PROJECT_URL=$$(go list -m all | head -1)
+publish:
+	docker buildx build \
+		--platform linux/amd64,linux/arm64 \
+		--push \
 		--build-arg base_image_version=$(BASE_IMAGE_VERSION) \
 		--build-arg commit_sha=$(COMMIT_SHA) \
 		--build-arg current_time=$(CURRENT_TIME_ISO) \
 		--build-arg image_id=$(IMAGE_ID) \
 		--build-arg project_url=$(PROJECT_URL) \
-		-t $$(cat "$(STATES_DIR)/image_ref") \
+		-t $(IMAGE_REF) \
+		-t $(CONTAINER_IMAGE_BASE_REF):latest \
 		-f Containerfile \
 		.
-
-.PHONY: sanitize
-sanitize: IMAGE_REF=$$(cat "$(STATES_DIR)/image_ref")
-sanitize:
-	docker run --rm $(IMAGE_REF) apmsoak version
-
-.PHONY: publish
-publish: IMAGE_REF=$$(cat "$(STATES_DIR)/image_ref")
-publish:
-	docker push $(IMAGE_REF)
-	docker tag $(IMAGE_REF) $(CONTAINER_IMAGE_BASE_REF):latest
-	docker push $(CONTAINER_IMAGE_BASE_REF):latest
 
 notice: NOTICE.txt
 NOTICE.txt: go.mod

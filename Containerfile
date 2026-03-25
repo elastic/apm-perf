@@ -2,7 +2,7 @@
 ARG base_image_version=1.22
 # We are doing cross compilation, this speeds things up
 # https://www.docker.com/blog/faster-multi-platform-builds-dockerfile-cross-compilation-guide/
-FROM --platform=$BUILDPLATFORM golang:${base_image_version} as builder
+FROM --platform=$BUILDPLATFORM golang:${base_image_version} AS builder
 
 # Switch workdir
 WORKDIR /opt/apm-perf
