@@ -117,6 +117,15 @@ func runOne(
 
 		result.skipped = b.Skipped()
 		result.failed = b.Failed()
+
+		// Sleep to allow any remaining data to be consumed by the pipelines
+		// so that they don't pollute the result of the next benchmark run.
+		//
+		// TODO (lahsivjar): Make this deterministic by introducing cleanup
+		// metrics. We can watch the cleanup metrics to reach to a specified
+		// threshold and then run the next benchmark.
+		time.Sleep(time.Minute)
+
 		extraMetrics(b)
 	})
 	return result
